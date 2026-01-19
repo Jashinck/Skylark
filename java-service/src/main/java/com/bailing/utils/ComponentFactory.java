@@ -253,11 +253,6 @@ public class ComponentFactory {
                 componentType, className, e);
             return null;
             
-        } catch (NoSuchMethodException e) {
-            logger.error("Failed to create {} component: no suitable constructor found in class: {}", 
-                componentType, className, e);
-            return null;
-            
         } catch (Exception e) {
             logger.error("Failed to create {} component: {}", componentType, className, e);
             return null;

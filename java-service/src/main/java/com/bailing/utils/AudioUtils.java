@@ -226,9 +226,12 @@ public class AudioUtils {
      * <p>Checks performed:</p>
      * <ul>
      *   <li>Path is not null or empty</li>
-     *   <li>Parent directory exists or can be created</li>
+     *   <li>Parent directory exists and is writable, or can potentially be created</li>
      *   <li>If file exists, it is writable</li>
      * </ul>
+     * 
+     * <p>Note: This method does not actually attempt to create directories,
+     * it only validates if the path structure appears valid.</p>
      * 
      * @param filePath File path to validate
      * @return true if the path is valid and writable
@@ -243,9 +246,15 @@ public class AudioUtils {
             Path path = Paths.get(filePath);
             Path parent = path.getParent();
             
-            if (parent != null && !Files.exists(parent)) {
-                logger.debug("Parent directory does not exist: {}", parent);
-                return true;
+            if (parent != null) {
+                if (!Files.exists(parent)) {
+                    logger.debug("Parent directory does not exist but may be creatable: {}", parent);
+                    return true;
+                }
+                if (!Files.isWritable(parent)) {
+                    logger.warn("Parent directory is not writable: {}", parent);
+                    return false;
+                }
             }
             
             if (Files.exists(path) && !Files.isWritable(path)) {

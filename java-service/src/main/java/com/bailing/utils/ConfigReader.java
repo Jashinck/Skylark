@@ -171,8 +171,12 @@ public class ConfigReader {
      * Recursively replaces environment variables in a list.
      * 
      * <p>Note: This method processes nested maps and lists recursively.
-     * String values in lists are logged but cannot be modified in-place
-     * due to potential immutability of the list structure.</p>
+     * String values in lists are logged but cannot be modified because the method
+     * uses Iterable interface which doesn't support element replacement by index.
+     * Most YAML parsers return immutable or array-backed lists that cannot be modified anyway.</p>
+     * 
+     * <p>For environment variable substitution in list strings, consider using
+     * map-based configuration structures instead of lists.</p>
      * 
      * @param list List to process
      */
@@ -183,7 +187,7 @@ public class ConfigReader {
                 String original = (String) item;
                 String replaced = replaceEnvVarsInString(original);
                 if (!replaced.equals(original)) {
-                    logger.debug("Note: String '{}' in list contains environment variables but cannot be modified in immutable list", 
+                    logger.debug("String '{}' in list contains environment variables but cannot be replaced (use map keys instead)", 
                         maskSensitiveValue(original));
                 }
             } else if (item instanceof Map) {
