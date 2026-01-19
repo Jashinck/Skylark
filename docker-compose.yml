@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  asr-service:
+    build: ./python-services/asr-service
+    container_name: bailing-asr
+    ports:
+      - "8001:8001"
+    environment:
+      - MODEL_DIR=iic/SenseVoiceSmall
+      - DEVICE=cpu
+    volumes:
+      - ./models:/root/.cache/modelscope
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  vad-service:
+    build: ./python-services/vad-service
+    container_name: bailing-vad
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  tts-service:
+    build: ./python-services/tts-service
+    container_name: bailing-tts
+    ports:
+      - "8003:8003"
+    environment:
+      - TTS_VOICE=zh-CN-XiaoxiaoNeural
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  java-service:
+    build: ./java-service
+    container_name: bailing-java
+    ports:
+      - "8080:8080"
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - SPRING_PROFILES_ACTIVE=prod
+    volumes:
+      - ./config:/app/config
+      - ./tmp:/app/tmp
+      - ./logs:/app/logs
+    depends_on:
+      - asr-service
+      - vad-service
+      - tts-service
+    restart: unless-stopped
+    command: ["java", "-jar", "bailing-java.jar", "config/config.yaml"]
+
+networks:
+  default:
+    name: bailing-network
