@@ -170,15 +170,23 @@ public class ConfigReader {
     /**
      * Recursively replaces environment variables in a list.
      * 
-     * <p>Note: This method cannot modify immutable lists. List elements are processed
-     * but the original list structure is preserved.</p>
+     * <p>Note: This method processes nested maps and lists recursively.
+     * String values in lists are logged but cannot be modified in-place
+     * due to potential immutability of the list structure.</p>
      * 
      * @param list List to process
      */
     @SuppressWarnings("unchecked")
     private static void replaceEnvVarsInList(Iterable<Object> list) {
         for (Object item : list) {
-            if (item instanceof Map) {
+            if (item instanceof String) {
+                String original = (String) item;
+                String replaced = replaceEnvVarsInString(original);
+                if (!replaced.equals(original)) {
+                    logger.debug("Note: String '{}' in list contains environment variables but cannot be modified in immutable list", 
+                        maskSensitiveValue(original));
+                }
+            } else if (item instanceof Map) {
                 replaceEnvironmentVariables((Map<String, Object>) item);
             } else if (item instanceof Iterable) {
                 replaceEnvVarsInList((Iterable<Object>) item);
