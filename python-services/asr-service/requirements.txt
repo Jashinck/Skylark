@@ -1,0 +1,6 @@
+flask==3.0.0
+flask-cors==4.0.0
+funasr==1.0.23
+torch==2.6.0
+torchaudio==2.6.0
+modelscope==1.11.0
