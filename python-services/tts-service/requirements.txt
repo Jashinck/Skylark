@@ -1,3 +1,0 @@
-flask==3.0.0
-flask-cors==4.0.0
-edge-tts==6.1.9

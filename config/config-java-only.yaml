@@ -7,22 +7,19 @@ interrupt: true
 
 # ASR服务 - Java实现
 asr:
-  class_name: HttpASRAdapter
-  service_url: http://localhost:8080/asr/recognize
+  class_name: DirectASRAdapter
   output_file: tmp/asr
 
 # VAD服务 - Java实现
 vad:
-  class_name: HttpVADAdapter
-  service_url: http://localhost:8080/vad
+  class_name: DirectVADAdapter
   sampling_rate: 16000
   threshold: 0.5
   min_silence_duration_ms: 500
 
 # TTS服务 - Java实现
 tts:
-  class_name: HttpTTSAdapter
-  service_url: http://localhost:8080/tts
+  class_name: DirectTTSAdapter
   output_file: tmp/tts
   voice: zh-CN-XiaoxiaoNeural
 

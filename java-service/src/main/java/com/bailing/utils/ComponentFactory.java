@@ -2,8 +2,10 @@ package com.bailing.utils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.Map;
 
 /**
@@ -47,6 +49,17 @@ public class ComponentFactory {
     private static final Logger logger = LoggerFactory.getLogger(ComponentFactory.class);
     
     private static final String CLASS_NAME_KEY = "class_name";
+    private static ApplicationContext springContext;
+    
+    /**
+     * Sets the Spring application context for dependency injection.
+     * 
+     * @param context Spring application context
+     */
+    public static void setSpringContext(ApplicationContext context) {
+        springContext = context;
+        logger.info("Spring context set in ComponentFactory");
+    }
     
     /**
      * Creates an ASR (Automatic Speech Recognition) instance from configuration.
@@ -246,6 +259,11 @@ public class ComponentFactory {
             Object instance = constructor.newInstance(config);
             logger.info("Successfully created {} component: {}", componentType, className);
             
+            // Inject Spring dependencies if available
+            if (springContext != null) {
+                injectSpringDependencies(instance, componentType);
+            }
+            
             return instance;
             
         } catch (ClassNotFoundException e) {
@@ -288,6 +306,58 @@ public class ComponentFactory {
             
             throw new NoSuchMethodException(
                 "No constructor found that accepts Map parameter in class: " + clazz.getName());
+        }
+    }
+    
+    /**
+     * Injects Spring dependencies into a component instance.
+     * 
+     * <p>Looks for setter methods and attempts to inject Spring beans.</p>
+     * 
+     * @param instance Component instance
+     * @param componentType Component type for logging
+     */
+    private static void injectSpringDependencies(Object instance, String componentType) {
+        try {
+            Class<?> clazz = instance.getClass();
+            
+            // For Direct adapters, inject the appropriate service
+            if (clazz.getSimpleName().equals("DirectASRAdapter")) {
+                injectService(instance, "setAsrService", "ASRService");
+            } else if (clazz.getSimpleName().equals("DirectVADAdapter")) {
+                injectService(instance, "setVadService", "VADService");
+            } else if (clazz.getSimpleName().equals("DirectTTSAdapter")) {
+                injectService(instance, "setTtsService", "TTSService");
+            }
+            
+        } catch (Exception e) {
+            logger.warn("Failed to inject Spring dependencies into {}: {}", componentType, e.getMessage());
+        }
+    }
+    
+    /**
+     * Injects a specific service into an instance via setter method.
+     * 
+     * @param instance Instance to inject into
+     * @param setterName Name of setter method
+     * @param serviceName Name of service class (simple name)
+     */
+    private static void injectService(Object instance, String setterName, String serviceName) {
+        try {
+            Object service = springContext.getBean(Class.forName("com.bailing.service." + serviceName));
+            Method setter = instance.getClass().getMethod(setterName, service.getClass().getInterfaces()[0]);
+            setter.invoke(instance, service);
+            logger.info("Injected {} into {}", serviceName, instance.getClass().getSimpleName());
+        } catch (Exception e) {
+            // Try without interface
+            try {
+                Object service = springContext.getBean(Class.forName("com.bailing.service." + serviceName));
+                Method setter = instance.getClass().getMethod(setterName, service.getClass());
+                setter.invoke(instance, service);
+                logger.info("Injected {} into {}", serviceName, instance.getClass().getSimpleName());
+            } catch (Exception e2) {
+                logger.warn("Failed to inject {}: {}", serviceName, e2.getMessage());
+            }
         }
     }
     
