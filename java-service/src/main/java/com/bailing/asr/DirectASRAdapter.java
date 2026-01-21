@@ -58,7 +58,9 @@ public class DirectASRAdapter implements ASR {
         logger.debug("Starting ASR recognition for {} bytes of audio data", audioData.length);
         
         if (asrService == null) {
-            throw new IllegalStateException("ASRService not initialized. Make sure Spring context is properly configured.");
+            throw new IllegalStateException("ASRService not initialized. " +
+                "Make sure Spring context is properly configured and ASRService bean is available. " +
+                "Check that ComponentFactoryConfig is loaded and @Service annotation is present on ASRService.");
         }
         
         try {

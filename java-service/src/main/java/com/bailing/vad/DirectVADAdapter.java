@@ -66,7 +66,9 @@ public class DirectVADAdapter implements VAD {
             sessionId, audioData.length);
         
         if (vadService == null) {
-            throw new IllegalStateException("VADService not initialized. Make sure Spring context is properly configured.");
+            throw new IllegalStateException("VADService not initialized. " +
+                "Make sure Spring context is properly configured and VADService bean is available. " +
+                "Check that ComponentFactoryConfig is loaded and @Service annotation is present on VADService.");
         }
         
         try {
@@ -107,7 +109,9 @@ public class DirectVADAdapter implements VAD {
         logger.debug("Resetting VAD state for session: {}", sessionId);
         
         if (vadService == null) {
-            throw new IllegalStateException("VADService not initialized. Make sure Spring context is properly configured.");
+            throw new IllegalStateException("VADService not initialized. " +
+                "Make sure Spring context is properly configured and VADService bean is available. " +
+                "Check that ComponentFactoryConfig is loaded and @Service annotation is present on VADService.");
         }
         
         try {

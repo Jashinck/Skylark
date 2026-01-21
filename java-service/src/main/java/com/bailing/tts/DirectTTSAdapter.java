@@ -64,7 +64,9 @@ public class DirectTTSAdapter implements TTS {
         logger.debug("Starting TTS synthesis for text: {} characters", text.length());
         
         if (ttsService == null) {
-            throw new IllegalStateException("TTSService not initialized. Make sure Spring context is properly configured.");
+            throw new IllegalStateException("TTSService not initialized. " +
+                "Make sure Spring context is properly configured and TTSService bean is available. " +
+                "Check that ComponentFactoryConfig is loaded and @Service annotation is present on TTSService.");
         }
         
         try {
