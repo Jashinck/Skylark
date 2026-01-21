@@ -319,14 +319,14 @@ public class ComponentFactory {
      */
     private static void injectSpringDependencies(Object instance, String componentType) {
         try {
-            Class<?> clazz = instance.getClass();
+            String className = instance.getClass().getSimpleName();
             
             // For Direct adapters, inject the appropriate service
-            if (clazz.getSimpleName().equals("DirectASRAdapter")) {
+            if ("DirectASRAdapter".equals(className)) {
                 injectService(instance, "setAsrService", "ASRService");
-            } else if (clazz.getSimpleName().equals("DirectVADAdapter")) {
+            } else if ("DirectVADAdapter".equals(className)) {
                 injectService(instance, "setVadService", "VADService");
-            } else if (clazz.getSimpleName().equals("DirectTTSAdapter")) {
+            } else if ("DirectTTSAdapter".equals(className)) {
                 injectService(instance, "setTtsService", "TTSService");
             }
             
@@ -343,21 +343,44 @@ public class ComponentFactory {
      * @param serviceName Name of service class (simple name)
      */
     private static void injectService(Object instance, String setterName, String serviceName) {
+        if (springContext == null) {
+            logger.debug("Spring context not available, skipping dependency injection");
+            return;
+        }
+        
         try {
-            Object service = springContext.getBean(Class.forName("com.bailing.service." + serviceName));
-            Method setter = instance.getClass().getMethod(setterName, service.getClass().getInterfaces()[0]);
+            // Use fully qualified class name for security
+            String fullClassName = "com.bailing.service." + serviceName;
+            Class<?> serviceClass = Class.forName(fullClassName);
+            Object service = springContext.getBean(serviceClass);
+            
+            // Try to find and invoke the setter method
+            Class<?>[] interfaces = serviceClass.getInterfaces();
+            Method setter = null;
+            
+            // Try with interface if available
+            if (interfaces != null && interfaces.length > 0) {
+                try {
+                    setter = instance.getClass().getMethod(setterName, interfaces[0]);
+                } catch (NoSuchMethodException e) {
+                    // Continue to try with concrete class
+                }
+            }
+            
+            // If no interface setter found, try with concrete class
+            if (setter == null) {
+                setter = instance.getClass().getMethod(setterName, serviceClass);
+            }
+            
             setter.invoke(instance, service);
             logger.info("Injected {} into {}", serviceName, instance.getClass().getSimpleName());
+            
+        } catch (ClassNotFoundException e) {
+            logger.warn("Service class not found: {}", serviceName);
+        } catch (NoSuchMethodException e) {
+            logger.warn("Setter method {} not found in {}", setterName, instance.getClass().getSimpleName());
         } catch (Exception e) {
-            // Try without interface
-            try {
-                Object service = springContext.getBean(Class.forName("com.bailing.service." + serviceName));
-                Method setter = instance.getClass().getMethod(setterName, service.getClass());
-                setter.invoke(instance, service);
-                logger.info("Injected {} into {}", serviceName, instance.getClass().getSimpleName());
-            } catch (Exception e2) {
-                logger.warn("Failed to inject {}: {}", serviceName, e2.getMessage());
-            }
+            logger.warn("Failed to inject {}: {}", serviceName, e.getMessage());
         }
     }
     
