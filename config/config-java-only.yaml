@@ -5,23 +5,25 @@ mode: local
 wake_word: ""
 interrupt: true
 
-# ASR服务 - Java实现
+# ASR服务 - Java实现 (Vosk)
 asr:
   class_name: DirectASRAdapter
   output_file: tmp/asr
+  model_path: models/vosk-model-small-cn-0.22
 
-# VAD服务 - Java实现
+# VAD服务 - Java实现 (Silero VAD)
 vad:
   class_name: DirectVADAdapter
+  model_path: models/silero_vad.onnx
   sampling_rate: 16000
   threshold: 0.5
   min_silence_duration_ms: 500
 
-# TTS服务 - Java实现
+# TTS服务 - Java实现 (MaryTTS)
 tts:
   class_name: DirectTTSAdapter
   output_file: tmp/tts
-  voice: zh-CN-XiaoxiaoNeural
+  voice: cmu-slt-hsmm
 
 # LLM服务
 llm:

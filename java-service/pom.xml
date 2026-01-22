@@ -74,6 +74,28 @@
             <artifactId>commons-lang3</artifactId>
         </dependency>
 
+        <!-- Vosk ASR -->
+        <dependency>
+            <groupId>com.alphacephei</groupId>
+            <artifactId>vosk</artifactId>
+            <version>0.3.45</version>
+        </dependency>
+
+        <!-- ONNX Runtime for Silero VAD -->
+        <dependency>
+            <groupId>com.microsoft.onnxruntime</groupId>
+            <artifactId>onnxruntime</artifactId>
+            <version>1.16.3</version>
+        </dependency>
+
+        <!-- Note: MaryTTS has dependency resolution issues in Maven Central.
+             To use MaryTTS, download the standalone JAR with dependencies from:
+             https://github.com/marytts/marytts/releases/download/v5.2.1/marytts-builder-5.2.1.zip
+             and add it as a system dependency or to your local Maven repository.
+             
+             For now, TTS service uses a fallback implementation that generates
+             placeholder WAV files. -->
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

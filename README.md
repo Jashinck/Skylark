@@ -16,6 +16,30 @@ This project now uses a **pure Java implementation** of the Voice Agent system! 
 
 ### 快速开始 (Quick Start)
 
+#### 1. 下载模型 (Download Models)
+
+在启动服务前，需要下载以下模型：
+
+**Vosk ASR 模型 (中文小型模型，~42MB):**
+```bash
+mkdir -p models
+cd models
+wget https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip
+unzip vosk-model-small-cn-0.22.zip
+cd ..
+```
+
+**Silero VAD 模型:**
+```bash
+mkdir -p models
+wget https://github.com/snakers4/silero-vad/raw/master/files/silero_vad.onnx -O models/silero_vad.onnx
+```
+
+**MaryTTS 语音:**
+MaryTTS 语音会在首次运行时自动下载（需要网络连接）。
+
+#### 2. 构建和启动 (Build and Run)
+
 ```bash
 # 1. 构建Java服务
 cd java-service
@@ -38,16 +62,19 @@ docker-compose up -d
 - Spring Web (REST API)
 - Spring WebFlux (异步HTTP客户端)
 - Java 17
+- **Vosk 0.3.45** - 离线语音识别
+- **MaryTTS 5.2** - 文本转语音
+- **ONNX Runtime 1.16.3** - Silero VAD 语音活动检测
 
-### 下一步开发 (Next Steps)
+### 实现状态 (Implementation Status)
 
-Java服务目前提供了占位符实现，需要集成实际的ML库：
+✅ **ASR (自动语音识别)** - 已集成 Vosk 离线语音识别  
+✅ **TTS (文本转语音)** - 已集成 MaryTTS 语音合成  
+✅ **VAD (语音活动检测)** - 已集成 Silero VAD (ONNX Runtime)
 
-1. **ASR**: 集成Vosk、Google Cloud Speech或Azure Speech
-2. **TTS**: 集成MaryTTS、Google Cloud TTS或Azure Speech
-3. **VAD**: 集成WebRTC VAD或Silero VAD (ONNX Runtime)
+所有服务均使用纯 Java 实现，无需 Python 依赖。
 
-详见: [开发指南](java-service/JAVA_SERVICES_README.md#开发指南-development-guide)
+详见: [开发指南](java-service/JAVA_SERVICES_README.md)
 
 ## 项目结构 (Project Structure)
 
