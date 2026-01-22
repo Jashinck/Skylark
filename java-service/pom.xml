@@ -74,6 +74,38 @@
             <artifactId>commons-lang3</artifactId>
         </dependency>
 
+        <!-- Vosk for ASR (Automatic Speech Recognition) -->
+        <dependency>
+            <groupId>com.alphacephei</groupId>
+            <artifactId>vosk</artifactId>
+            <version>0.3.45</version>
+        </dependency>
+
+        <!-- MaryTTS for TTS (Text-to-Speech) - Optional -->
+        <!-- Note: MaryTTS has complex dependencies. Making it optional. -->
+        <!-- For production use, consider cloud-based TTS services (Google, Azure, AWS) -->
+        <!--
+        <dependency>
+            <groupId>de.dfki.mary</groupId>
+            <artifactId>marytts-runtime</artifactId>
+            <version>5.2.1</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>de.dfki.mary</groupId>
+            <artifactId>voice-cmu-slt-hsmm</artifactId>
+            <version>5.2.1</version>
+            <optional>true</optional>
+        </dependency>
+        -->
+
+        <!-- ONNX Runtime for VAD (Voice Activity Detection with Silero VAD) -->
+        <dependency>
+            <groupId>com.microsoft.onnxruntime</groupId>
+            <artifactId>onnxruntime</artifactId>
+            <version>1.16.0</version>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

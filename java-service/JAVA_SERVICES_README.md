@@ -272,3 +272,212 @@ curl -X POST http://localhost:8080/tts \
 4. 添加单元测试和集成测试
 5. 优化性能和资源使用
 6. 添加监控和日志记录
+
+## 模型下载和配置 (Model Download and Configuration)
+
+### ASR - Vosk 模型
+
+本实现使用 Vosk 进行离线语音识别。
+
+**下载模型:**
+1. 访问 https://alphacephei.com/vosk/models
+2. 下载适合您语言的模型，推荐:
+   - 中文: `vosk-model-small-cn-0.22` (小型模型, ~42MB)
+   - 中文: `vosk-model-cn-0.22` (完整模型, ~1.3GB)
+   - 英文: `vosk-model-small-en-us-0.15` (小型模型, ~40MB)
+   - 英文: `vosk-model-en-us-0.22` (完整模型, ~1.8GB)
+
+**安装步骤:**
+```bash
+# 创建模型目录
+mkdir -p models
+
+# 下载并解压中文小型模型 (示例)
+cd models
+wget https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip
+unzip vosk-model-small-cn-0.22.zip
+cd ..
+```
+
+**配置:**
+在 `config/config-java-only.yaml` 或 `application.properties` 中设置模型路径:
+```yaml
+asr:
+  model_dir: models/vosk-model-small-cn-0.22
+  sample_rate: 16000
+```
+
+### TTS - MaryTTS 声音包 (可选 / Optional)
+
+本实现支持使用 MaryTTS 进行离线语音合成，但由于 MaryTTS 的依赖复杂性，默认已注释。
+
+**可选安装 (如需使用):**
+
+由于 MaryTTS 的某些依赖在 Maven Central 不可用，推荐使用以下替代方案：
+
+1. **云服务API (推荐):**
+   - Google Cloud Text-to-Speech: https://cloud.google.com/text-to-speech
+   - Azure Speech Services: https://azure.microsoft.com/en-us/services/cognitive-services/text-to-speech/
+   - AWS Polly: https://aws.amazon.com/polly/
+
+2. **本地MaryTTS (高级用户):**
+   如果需要使用 MaryTTS，需要手动编译和安装依赖：
+   ```bash
+   # 从源码编译 MaryTTS
+   git clone https://github.com/marytts/marytts.git
+   cd marytts
+   ./gradlew build
+   # 按照官方文档安装到本地 Maven 仓库
+   ```
+
+**当前行为:**
+- TTS 服务会在启动时尝试加载 MaryTTS
+- 如果 MaryTTS 不可用，会自动使用占位符模式
+- 占位符模式生成静音 WAV 文件
+
+**配置:**
+```yaml
+tts:
+  voice: cmu-slt-hsmm
+```
+
+**注意:** 
+- MaryTTS 主要支持英语和德语
+- 对于中文 TTS，建议使用云服务 API (如 Azure Speech, Google Cloud TTS)
+- 或者考虑其他支持中文的 TTS 库
+
+### VAD - Silero VAD (ONNX)
+
+本实现支持使用 Silero VAD ONNX 模型进行高精度语音活动检测。
+
+**下载模型:**
+```bash
+# 创建模型目录
+mkdir -p models
+
+# 下载 Silero VAD ONNX 模型
+cd models
+wget https://github.com/snakers4/silero-vad/raw/master/files/silero_vad.onnx
+cd ..
+```
+
+**或者手动下载:**
+1. 访问 https://github.com/snakers4/silero-vad
+2. 下载 `silero_vad.onnx` 文件
+3. 放置到 `models/silero_vad.onnx`
+
+**配置:**
+```yaml
+vad:
+  model_path: models/silero_vad.onnx
+  threshold: 0.5
+  sampling_rate: 16000
+  min_silence_duration_ms: 500
+```
+
+**后备方案:**
+如果 ONNX 模型不可用，系统会自动使用简单的能量检测算法作为后备方案。
+
+### 快速安装脚本
+
+创建 `download_models.sh` 脚本快速下载所有模型:
+
+```bash
+#!/bin/bash
+
+echo "正在创建模型目录..."
+mkdir -p models
+
+echo "下载 Vosk ASR 模型..."
+cd models
+wget https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip
+unzip vosk-model-small-cn-0.22.zip
+rm vosk-model-small-cn-0.22.zip
+
+echo "下载 Silero VAD 模型..."
+wget https://github.com/snakers4/silero-vad/raw/master/files/silero_vad.onnx
+
+cd ..
+echo "✅ 所有模型下载完成!"
+echo "MaryTTS 将使用内置声音包，无需额外下载。"
+```
+
+### Maven 依赖
+
+确保 `pom.xml` 包含以下依赖:
+
+```xml
+<!-- Vosk for ASR -->
+<dependency>
+    <groupId>com.alphacephei</groupId>
+    <artifactId>vosk</artifactId>
+    <version>0.3.45</version>
+</dependency>
+
+<!-- ONNX Runtime for VAD -->
+<dependency>
+    <groupId>com.microsoft.onnxruntime</groupId>
+    <artifactId>onnxruntime</artifactId>
+    <version>1.16.0</version>
+</dependency>
+
+<!-- MaryTTS for TTS (可选，默认已注释) -->
+<!-- 如需使用，请取消注释并解决依赖问题 -->
+```
+
+**注意:** MaryTTS 依赖默认已注释，因为部分依赖在 Maven Central 不可用。建议使用云服务 API 进行语音合成。
+
+### 构建和运行
+
+```bash
+# 构建项目
+cd java-service
+mvn clean package
+
+# 运行服务
+java -jar target/bailing-java.jar
+```
+
+### 验证服务
+
+```bash
+# 检查服务健康状态
+curl http://localhost:8080/asr/health
+curl http://localhost:8080/tts/health
+curl http://localhost:8080/vad/health
+
+# 测试 TTS (文本转语音)
+curl -X POST http://localhost:8080/tts \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Hello world"}' \
+  --output test.wav
+
+# 播放生成的音频
+# Linux: aplay test.wav
+# macOS: afplay test.wav
+# Windows: start test.wav
+```
+
+### 故障排除
+
+**Vosk 模型未找到:**
+- 确保模型目录路径正确
+- 检查模型文件是否完整解压
+- 查看日志中的具体路径
+
+**MaryTTS 初始化失败:**
+- 确保依赖正确安装
+- 检查 Java 版本 (需要 Java 17+)
+- 查看详细错误日志
+
+**ONNX Runtime 错误:**
+- 确保 ONNX 模型文件存在
+- 检查文件权限
+- 如果失败，系统会自动使用能量检测作为后备
+
+### 性能优化
+
+1. **模型预加载:** 所有模型在服务启动时加载，避免首次请求延迟
+2. **线程安全:** 所有服务实现都是线程安全的，支持并发请求
+3. **资源管理:** 使用 `@PreDestroy` 确保资源正确释放
+4. **错误处理:** 完善的异常处理和日志记录
