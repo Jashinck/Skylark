@@ -6,12 +6,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * TTS (Text-to-Speech) Service Implementation
@@ -45,42 +51,100 @@ public class TTSService {
     @Value("${tts.temp.dir:temp/tts}")
     private String tempDir;
     
+    private Object marytts; // Using Object to avoid compile-time dependency
+    private boolean maryTTSAvailable = false;
+    
+    // Cached reflection methods for performance
+    private java.lang.reflect.Method getAvailableVoicesMethod;
+    private java.lang.reflect.Method setVoiceMethod;
+    private java.lang.reflect.Method generateAudioMethod;
+    
     /**
-     * Initializes the TTS system.
-     * 
-     * @throws Exception if initialization fails
+     * Initialize MaryTTS on service startup (if available).
      */
     @PostConstruct
-    public void init() throws Exception {
-        logger.info("✅ TTS服务初始化完成");
-        logger.info("默认语音: {}", defaultVoice);
-        logger.warn("⚠️  TTS服务当前使用占位符实现");
-        logger.warn("⚠️  要启用MaryTTS，请下载并安装MaryTTS 5.2.1:");
-        logger.warn("   1. 从 https://github.com/marytts/marytts/releases 下载 marytts-builder-5.2.1.zip");
-        logger.warn("   2. 解压并将JAR文件添加到项目依赖");
-        logger.warn("   3. 取消TTSService中MaryTTS代码的注释");
-        
-        // Uncomment when MaryTTS JARs are available:
-        /*
+    public void initMaryTTS() {
         try {
-            marytts = new LocalMaryInterface();
+            // Try to load MaryTTS using reflection to avoid compile-time dependency
+            Class<?> maryInterfaceClass = Class.forName("marytts.LocalMaryInterface");
+            marytts = maryInterfaceClass.getDeclaredConstructor().newInstance();
+            
+            // Cache reflection methods for performance
+            getAvailableVoicesMethod = maryInterfaceClass.getMethod("getAvailableVoices");
+            setVoiceMethod = maryInterfaceClass.getMethod("setVoice", String.class);
+            generateAudioMethod = maryInterfaceClass.getMethod("generateAudio", String.class);
+            
+            maryTTSAvailable = true;
+            
             logger.info("✅ MaryTTS初始化成功");
             logger.info("默认语音: {}", defaultVoice);
             
-            // List available voices for debugging
-            Collection<Voice> voices = Voice.getAvailableVoices();
+            // Log available voices
+            @SuppressWarnings("unchecked")
+            Set<String> voices = (Set<String>) getAvailableVoicesMethod.invoke(marytts);
             logger.info("可用语音数量: {}", voices.size());
-            for (Voice voice : voices) {
-                logger.debug("  - {} ({}, {})", voice.getName(), voice.getGender(), voice.getLocale());
+            if (!voices.isEmpty()) {
+                logger.debug("可用语音列表: {}", String.join(", ", voices));
             }
             
+        } catch (ClassNotFoundException e) {
+            logger.warn("MaryTTS库未找到。TTS服务将使用占位符模式。");
+            logger.info("要启用MaryTTS，请取消pom.xml中MaryTTS依赖的注释并重新编译。");
+            logger.info("或考虑使用云服务（Google Cloud TTS, Azure Speech, AWS Polly）");
+            maryTTSAvailable = false;
         } catch (Exception e) {
-            logger.error("❌ MaryTTS初始化失败", e);
-            logger.error("MaryTTS语音数据将在首次使用时自动下载，请确保网络连接正常");
-            throw new Exception("Failed to initialize MaryTTS", e);
+            logger.error("MaryTTS初始化失败", e);
+            logger.warn("TTS服务将使用占位符模式");
+            maryTTSAvailable = false;
         }
-        */
     }
+    
+    /**
+     * Clean up resources on service shutdown.
+     */
+    @PreDestroy
+    public void cleanup() {
+        if (marytts != null) {
+            logger.info("MaryTTS资源已释放");
+        }
+    }
+    
+//     /**
+//      * Initializes the TTS system.
+//      * 
+//      * @throws Exception if initialization fails
+//      */
+//     @PostConstruct
+//     public void init() throws Exception {
+//         logger.info("✅ TTS服务初始化完成");
+//         logger.info("默认语音: {}", defaultVoice);
+//         logger.warn("⚠️  TTS服务当前使用占位符实现");
+//         logger.warn("⚠️  要启用MaryTTS，请下载并安装MaryTTS 5.2.1:");
+//         logger.warn("   1. 从 https://github.com/marytts/marytts/releases 下载 marytts-builder-5.2.1.zip");
+//         logger.warn("   2. 解压并将JAR文件添加到项目依赖");
+//         logger.warn("   3. 取消TTSService中MaryTTS代码的注释");
+        
+//         // Uncomment when MaryTTS JARs are available:
+//         /*
+//         try {
+//             marytts = new LocalMaryInterface();
+//             logger.info("✅ MaryTTS初始化成功");
+//             logger.info("默认语音: {}", defaultVoice);
+            
+//             // List available voices for debugging
+//             Collection<Voice> voices = Voice.getAvailableVoices();
+//             logger.info("可用语音数量: {}", voices.size());
+//             for (Voice voice : voices) {
+//                 logger.debug("  - {} ({}, {})", voice.getName(), voice.getGender(), voice.getLocale());
+//             }
+            
+//         } catch (Exception e) {
+//             logger.error("❌ MaryTTS初始化失败", e);
+//             logger.error("MaryTTS语音数据将在首次使用时自动下载，请确保网络连接正常");
+//             throw new Exception("Failed to initialize MaryTTS", e);
+//         }
+//         */
+//     }
     
     /**
      * Synthesizes speech from text.
@@ -122,6 +186,7 @@ public class TTSService {
      * Performs actual text-to-speech synthesis.
      * 
      * <p>This is a placeholder implementation. Uncomment MaryTTS code when JAR is available.</p>
+     * Performs actual text-to-speech synthesis using MaryTTS (if available).
      * 
      * @param text Text to synthesize
      * @param voice Voice identifier
@@ -152,6 +217,32 @@ public class TTSService {
                     logger.debug("使用语音: {}", voice);
                 } else {
                     logger.warn("语音 {} 不可用，使用默认语音", voice);
+        // If MaryTTS is not available, use placeholder
+        if (!maryTTSAvailable || marytts == null) {
+            logger.warn("TTS服务正在使用占位符实现。请启用MaryTTS或配置云TTS服务。");
+            logger.info("文本: {}", text);
+            logger.info("语音: {}", voice);
+            createPlaceholderWavFile(outputFile, text);
+            return;
+        }
+        
+        try {
+            // Use cached reflection methods
+            
+            // Get available voices
+            @SuppressWarnings("unchecked")
+            Set<String> availableVoices = (Set<String>) getAvailableVoicesMethod.invoke(marytts);
+            
+            // Set voice if available
+            if (availableVoices.contains(voice)) {
+                setVoiceMethod.invoke(marytts, voice);
+                logger.debug("使用语音: {}", voice);
+            } else {
+                logger.warn("语音 '{}' 不可用，使用默认语音", voice);
+                if (!availableVoices.isEmpty()) {
+                    String firstVoice = availableVoices.iterator().next();
+                    setVoiceMethod.invoke(marytts, firstVoice);
+                    logger.debug("使用可用语音: {}", firstVoice);
                 }
             }
             
@@ -169,6 +260,18 @@ public class TTSService {
             throw new Exception("Speech synthesis failed: " + e.getMessage(), e);
         }
         */
+            logger.debug("开始MaryTTS合成: {} 字符", text.length());
+            AudioInputStream audio = (AudioInputStream) generateAudioMethod.invoke(marytts, text);
+            
+            // Write to file
+            AudioSystem.write(audio, AudioFileFormat.Type.WAVE, outputFile);
+            
+            logger.debug("TTS合成完成: {} bytes", outputFile.length());
+            
+        } catch (Exception e) {
+            logger.error("MaryTTS合成失败", e);
+            throw new Exception("TTS synthesis failed: " + e.getMessage(), e);
+        }
     }
     
     /**
@@ -292,10 +395,61 @@ public class TTSService {
             logger.error("获取语音列表失败", e);
         }
         */
+        List<Map<String, String>> voices = new ArrayList<>();
+        
+        if (maryTTSAvailable && marytts != null) {
+            try {
+                // Get actual voices from MaryTTS using cached reflection method
+                @SuppressWarnings("unchecked")
+                Set<String> availableVoices = (Set<String>) getAvailableVoicesMethod.invoke(marytts);
+                
+                for (String voiceName : availableVoices) {
+                    Map<String, String> voice = new HashMap<>();
+                    voice.put("name", voiceName);
+                    voice.put("locale", extractLocaleFromVoice(voiceName));
+                    voice.put("gender", "Unknown"); // MaryTTS doesn't provide gender info easily
+                    voices.add(voice);
+                }
+                
+                logger.debug("返回 {} 个MaryTTS语音", voices.size());
+            } catch (Exception e) {
+                logger.error("获取MaryTTS语音列表失败", e);
+                // Fall through to placeholder
+            }
+        }
+        
+        // If MaryTTS not available or failed, return placeholder
+        if (voices.isEmpty()) {
+            Map<String, String> voice1 = new HashMap<>();
+            voice1.put("name", "cmu-slt-hsmm");
+            voice1.put("gender", "Female");
+            voice1.put("locale", "en-US");
+            voices.add(voice1);
+            
+            logger.debug("返回占位符语音列表");
+        }
         
         Map<String, Object> result = new HashMap<>();
         result.put("voices", voiceList);
         
         return result;
+    }
+    
+    /**
+     * Extracts locale from voice name (best effort).
+     * 
+     * @param voiceName Voice name
+     * @return Locale string
+     */
+    private String extractLocaleFromVoice(String voiceName) {
+        // Try to extract locale from voice name
+        // MaryTTS voice names often contain locale info
+        if (voiceName.contains("en")) return "en-US";
+        if (voiceName.contains("de")) return "de-DE";
+        if (voiceName.contains("fr")) return "fr-FR";
+        if (voiceName.contains("it")) return "it-IT";
+        if (voiceName.contains("tr")) return "tr-TR";
+        if (voiceName.contains("ru")) return "ru-RU";
+        return "en-US"; // default
     }
 }

@@ -9,7 +9,8 @@ interrupt: true
 asr:
   class_name: DirectASRAdapter
   output_file: tmp/asr
-  model_path: models/vosk-model-small-cn-0.22
+  model_dir: models/vosk-model-small-cn-0.22
+  sample_rate: 16000
 
 # VAD服务 - Java实现 (Silero VAD)
 vad:
@@ -18,6 +19,8 @@ vad:
   sampling_rate: 16000
   threshold: 0.5
   min_silence_duration_ms: 500
+  model_path: models/silero_vad.onnx
+  frame_duration_ms: 50
 
 # TTS服务 - Java实现 (MaryTTS)
 tts:
