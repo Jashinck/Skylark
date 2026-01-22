@@ -55,13 +55,14 @@ public class ASRService {
         if (!modelFile.exists()) {
             logger.error("❌ Vosk模型文件不存在: {}", modelPath);
             logger.error("请按照以下步骤下载模型:");
-            logger.error("1. 创建模型目录: mkdir -p {}", modelPath);
-            logger.error("2. 下载模型: wget https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip");
+            logger.error("1. 创建模型目录: mkdir -p models");
+            logger.error("2. 下载模型: cd models && wget https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip");
             logger.error("3. 解压模型: unzip vosk-model-small-cn-0.22.zip");
             throw new IllegalStateException("Vosk模型文件不存在: " + modelPath);
         }
         
         try {
+            // Vosk Model is thread-safe and can be shared across multiple recognizers
             model = new Model(modelPath);
             logger.info("✅ Vosk ASR模型加载成功: {}", modelPath);
         } catch (Exception e) {

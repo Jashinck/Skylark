@@ -4,6 +4,7 @@ import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtSession;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +36,9 @@ public class VADService {
     
     private OrtEnvironment env;
     private OrtSession session;
+    
+    // Thread-local recognizer to ensure thread safety
+    private final Object sessionLock = new Object();
     
     @Value("${vad.model.path:models/silero_vad.onnx}")
     private String modelPath;
@@ -81,6 +85,22 @@ public class VADService {
     }
     
     /**
+     * Cleanup ONNX Runtime resources on service shutdown.
+     */
+    @PreDestroy
+    public void cleanup() {
+        try {
+            if (session != null) {
+                session.close();
+                logger.info("✅ ONNX Session已关闭");
+            }
+            // Note: OrtEnvironment is a singleton and should not be closed
+        } catch (Exception e) {
+            logger.warn("清理ONNX Runtime资源时出错", e);
+        }
+    }
+    
+    /**
      * Detects voice activity in audio data using Silero VAD.
      * 
      * @param audioDataBase64 Base64-encoded audio data (int16 PCM)
@@ -119,6 +139,7 @@ public class VADService {
     
     /**
      * Performs actual voice activity detection using Silero VAD ONNX model.
+     * Thread-safe implementation with session locking.
      * 
      * @param audioBytes Audio data bytes (int16 PCM)
      * @param state Session state
@@ -135,26 +156,26 @@ public class VADService {
             
             // Prepare ONNX inputs
             long[] shape = {1, audioFloat.length};
-            FloatBuffer floatBuffer = FloatBuffer.wrap(audioFloat);
-            OnnxTensor inputTensor = OnnxTensor.createTensor(env, floatBuffer, shape);
             
-            // Create input map
-            Map<String, OnnxTensor> inputs = new HashMap<>();
-            inputs.put("input", inputTensor);
-            
-            // Run inference
-            try (OrtSession.Result result = session.run(inputs)) {
-                // Get output tensor and extract probability
-                float[][] output = (float[][]) result.get(0).getValue();
-                float probability = output[0][0];
-                
-                logger.debug("VAD probability: {}, threshold: {}", probability, threshold);
-                
-                // Update state and get status
-                return updateStateAndGetStatus(state, probability);
-                
-            } finally {
-                inputTensor.close();
+            // Thread-safe ONNX inference
+            synchronized (sessionLock) {
+                try (OnnxTensor inputTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(audioFloat), shape)) {
+                    // Create input map
+                    Map<String, OnnxTensor> inputs = new HashMap<>();
+                    inputs.put("input", inputTensor);
+                    
+                    // Run inference
+                    try (OrtSession.Result result = session.run(inputs)) {
+                        // Get output tensor and extract probability
+                        float[][] output = (float[][]) result.get(0).getValue();
+                        float probability = output[0][0];
+                        
+                        logger.debug("VAD probability: {}, threshold: {}", probability, threshold);
+                        
+                        // Update state and get status
+                        return updateStateAndGetStatus(state, probability);
+                    }
+                }
             }
             
         } catch (Exception e) {
