@@ -1,0 +1,36 @@
+# Bailing Voice Agent Configuration
+# 百聆智能语音助手配置
+
+server:
+  port: 8080
+
+# ASR Configuration
+asr:
+  model:
+    path: models/vosk-model-small-cn-0.22
+  temp:
+    dir: temp/asr
+
+# TTS Configuration
+tts:
+  voice: cmu-slt-hsmm
+  temp:
+    dir: temp/tts
+
+# VAD Configuration
+vad:
+  model:
+    path: models/silero_vad.onnx
+  sampling:
+    rate: 16000
+  threshold: 0.5
+  min:
+    silence:
+      duration:
+        ms: 500
+
+# Logging Configuration
+logging:
+  level:
+    com.bailing: INFO
+    root: INFO

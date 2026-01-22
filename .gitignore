@@ -32,6 +32,8 @@ tmp/
 temp/
 logs/
 models/
+*.onnx
+*.zip
 .env
 
 # Mac

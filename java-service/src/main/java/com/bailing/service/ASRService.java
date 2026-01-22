@@ -1,5 +1,8 @@
 package com.bailing.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,16 +28,8 @@ import java.util.UUID;
  * ASR (Automatic Speech Recognition) Service Implementation
  * 自动语音识别服务实现
  * 
- * <p>This is a Java implementation of the ASR service that was originally
- * written in Python using FunASR. This implementation provides a placeholder
- * that can be extended with actual Java-based ASR libraries such as:</p>
- * <ul>
- *   <li>Vosk (offline ASR)</li>
- *   <li>Google Cloud Speech-to-Text</li>
- *   <li>Azure Speech Services</li>
- *   <li>Kaldi (via JNI)</li>
- *   <li>Whisper (via ONNX Runtime)</li>
- * </ul>
+ * <p>This implementation uses Vosk for offline speech recognition.
+ * Supports WAV format audio (16kHz, 16-bit, mono).</p>
  * 
  * @author Bailing Team
  * @version 1.0.0
@@ -44,11 +39,13 @@ public class ASRService {
     
     private static final Logger logger = LoggerFactory.getLogger(ASRService.class);
     
+    private Model model;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     @Value("${asr.model.dir:models/vosk-model-small-cn-0.22}")
     private String modelDir;
     
-    @Value("${asr.device:cpu}")
-    private String device;
+    @Value("${asr.model.path:models/vosk-model-small-cn-0.22}")
+    private String modelPath;
     
     @Value("${asr.temp.dir:temp/asr}")
     private String tempDir;
@@ -103,16 +100,37 @@ public class ASRService {
     }
     
     /**
-     * Recognizes speech from audio data.
+     * Initializes the Vosk ASR model.
+     * Loads the model from the configured path during service startup.
      * 
-     * <p>TODO: Implement actual ASR using Java libraries like:</p>
-     * <ul>
-     *   <li>Vosk for offline recognition</li>
-     *   <li>Cloud-based APIs (Google, Azure, AWS)</li>
-     *   <li>ONNX Runtime for running ML models</li>
-     * </ul>
+     * @throws Exception if model loading fails
+     */
+    @PostConstruct
+    public void init() throws Exception {
+        File modelFile = new File(modelPath);
+        if (!modelFile.exists()) {
+            logger.error("❌ Vosk模型文件不存在: {}", modelPath);
+            logger.error("请按照以下步骤下载模型:");
+            logger.error("1. 创建模型目录: mkdir -p models");
+            logger.error("2. 下载模型: cd models && wget https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip");
+            logger.error("3. 解压模型: unzip vosk-model-small-cn-0.22.zip");
+            throw new IllegalStateException("Vosk模型文件不存在: " + modelPath);
+        }
+        
+        try {
+            // Vosk Model is thread-safe and can be shared across multiple recognizers
+            model = new Model(modelPath);
+            logger.info("✅ Vosk ASR模型加载成功: {}", modelPath);
+        } catch (Exception e) {
+            logger.error("❌ 加载Vosk模型失败", e);
+            throw new Exception("Failed to load Vosk model from " + modelPath, e);
+        }
+    }
+    
+    /**
+     * Recognizes speech from audio data using Vosk.
      * 
-     * @param audioData Raw audio data (WAV format)
+     * @param audioData Raw audio data (WAV format, 16kHz, 16-bit, mono)
      * @return Map containing "text" and "language" fields
      * @throws Exception if recognition fails
      */
@@ -155,9 +173,67 @@ public class ASRService {
     /**
      * Performs actual speech recognition using Vosk.
      * 
-     * @param audioFile Audio file to recognize
+     * @param audioFile Audio file to recognize (WAV format)
      * @return Recognized text
+     * @throws Exception if recognition fails
      */
+    private String performRecognition(File audioFile) throws Exception {
+        if (model == null) {
+            throw new IllegalStateException("Vosk模型未初始化");
+        }
+        
+        logger.debug("使用Vosk识别音频文件: {} ({} bytes)", audioFile.getAbsolutePath(), audioFile.length());
+        
+        try (Recognizer recognizer = new Recognizer(model, 16000)) {
+            // Read audio data
+            byte[] audioData = Files.readAllBytes(audioFile.toPath());
+            
+            // Skip WAV header if present (first 44 bytes)
+            int offset = 0;
+            int length = audioData.length;
+            if (audioData.length > 44 && audioData[0] == 'R' && audioData[1] == 'I' && 
+                audioData[2] == 'F' && audioData[3] == 'F') {
+                offset = 44;
+                length = audioData.length - 44;
+            }
+            
+            // Copy audio data without header
+            byte[] pcmData = new byte[length];
+            System.arraycopy(audioData, offset, pcmData, 0, length);
+            
+            // Process audio data
+            String result;
+            if (recognizer.acceptWaveForm(pcmData, length)) {
+                result = recognizer.getResult();
+            } else {
+                result = recognizer.getPartialResult();
+            }
+            
+            return extractTextFromJson(result);
+            
+        } catch (Exception e) {
+            logger.error("Vosk识别失败", e);
+            throw new Exception("Speech recognition failed: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Extracts text from Vosk JSON result.
+     * 
+     * @param jsonResult JSON result from Vosk
+     * @return Extracted text
+     */
+    private String extractTextFromJson(String jsonResult) {
+        try {
+            JsonNode node = objectMapper.readTree(jsonResult);
+            if (node.has("text")) {
+                return node.get("text").asText();
+            } else if (node.has("partial")) {
+                return node.get("partial").asText();
+            }
+            return "";
+        } catch (Exception e) {
+            logger.warn("解析Vosk结果失败: {}", jsonResult, e);
     private String performRecognition(File audioFile) {
         // If Vosk model is not initialized, use placeholder
         if (voskModel == null) {
