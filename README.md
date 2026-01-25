@@ -1,5 +1,33 @@
-# voice-agent
-Voice Agent : Based on VAD, ASR, LLM, TTS, RTC
+<div align="center">
+
+# 🐦 云雀 (Skylark)
+
+### 生于云端，鸣于指尖
+
+*Born in the Cloud, Singing at Your Fingertips*
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://www.oracle.com/java/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
+
+---
+
+**云雀** 是一个基于 VAD、ASR、LLM、TTS、RTC 技术的智能语音交互代理系统。
+
+**Skylark** is an intelligent Voice Agent system based on VAD, ASR, LLM, TTS, and RTC technologies.
+
+</div>
+
+---
+
+## ✨ 项目特色 (Highlights)
+
+🎯 **纯Java生态** - 全部使用Java实现，无需Python依赖  
+🚀 **轻量部署** - 单一JAR包，一键启动  
+🔧 **灵活配置** - 支持纯Java或混合模式部署  
+🌐 **云原生友好** - 适配容器化和微服务架构  
+
+---
 
 ## 🎉 纯Java生态 (Pure Java Ecosystem)
 
@@ -81,10 +109,10 @@ docker-compose up -d
 
 详见: [开发指南](java-service/JAVA_SERVICES_README.md)
 
-## 项目结构 (Project Structure)
+## 📁 项目结构 (Project Structure)
 
 ```
-voice-agent/
+skylark/
 ├── java-service/          # Java服务
 │   ├── src/main/java/com/bailing/
 │   │   ├── service/       # 服务实现 (ASR, TTS, VAD)
@@ -97,5 +125,22 @@ voice-agent/
 ├── config/                # 配置文件
 │   ├── config-java-only.yaml  # 纯Java配置
 │   └── config.yaml            # 备用配置
+├── web/                   # Web前端
 └── docker-compose.yml     # Docker编排
 ```
+
+---
+
+## 📜 开源协议 (License)
+
+本项目采用 [Apache License 2.0](LICENSE) 开源协议。
+
+---
+
+<div align="center">
+
+**🐦 云雀 (Skylark)** - 生于云端，鸣于指尖
+
+*让智能语音交互触手可及*
+
+</div>
