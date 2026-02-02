@@ -165,6 +165,7 @@ vad:
 
 ```yaml
 # ⚠️ 注意：HTTP Adapter需要独立的REST API服务器，当前未实现
+# 参见"部署"章节的"方式2"了解如何开发REST服务
 asr:
   adapter: HttpASRAdapter
   service_url: http://localhost:8080/asr/recognize
