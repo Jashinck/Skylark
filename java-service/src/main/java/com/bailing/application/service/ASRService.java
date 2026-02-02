@@ -36,13 +36,11 @@ public class ASRService {
     
     private static final Logger logger = LoggerFactory.getLogger(ASRService.class);
     
-    private Model model;
+    private Model voskModel;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    
     @Value("${asr.model.dir:models/vosk-model-small-cn-0.22}")
     private String modelDir;
-    
-    @Value("${asr.model.path:models/vosk-model-small-cn-0.22}")
-    private String modelPath;
     
     @Value("${asr.temp.dir:temp/asr}")
     private String tempDir;
@@ -50,14 +48,11 @@ public class ASRService {
     @Value("${asr.sample.rate:16000}")
     private int sampleRate;
     
-    private Model voskModel;
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    
     /**
      * Initialize Vosk model on service startup.
      */
     @PostConstruct
-    public void initVosk() {
+    public void init() {
         try {
             logger.info("正在初始化Vosk ASR模型...");
             logger.info("模型路径: {}", modelDir);
@@ -93,34 +88,6 @@ public class ASRService {
             } catch (Exception e) {
                 logger.warn("释放Vosk模型资源时出错", e);
             }
-        }
-    }
-    
-    /**
-     * Initializes the Vosk ASR model.
-     * Loads the model from the configured path during service startup.
-     * 
-     * @throws Exception if model loading fails
-     */
-    @PostConstruct
-    public void init() throws Exception {
-        File modelFile = new File(modelPath);
-        if (!modelFile.exists()) {
-            logger.error("❌ Vosk模型文件不存在: {}", modelPath);
-            logger.error("请按照以下步骤下载模型:");
-            logger.error("1. 创建模型目录: mkdir -p models");
-            logger.error("2. 下载模型: cd models && wget https://alphacephei.com/vosk/models/vosk-model-small-cn-0.22.zip");
-            logger.error("3. 解压模型: unzip vosk-model-small-cn-0.22.zip");
-            throw new IllegalStateException("Vosk模型文件不存在: " + modelPath);
-        }
-        
-        try {
-            // Vosk Model is thread-safe and can be shared across multiple recognizers
-            model = new Model(modelPath);
-            logger.info("✅ Vosk ASR模型加载成功: {}", modelPath);
-        } catch (Exception e) {
-            logger.error("❌ 加载Vosk模型失败", e);
-            throw new Exception("Failed to load Vosk model from " + modelPath, e);
         }
     }
     
@@ -172,69 +139,7 @@ public class ASRService {
      * 
      * @param audioFile Audio file to recognize (WAV format)
      * @return Recognized text
-     * @throws Exception if recognition fails
      */
-    private String performRecognition(File audioFile) throws Exception {
-        if (model == null) {
-            throw new IllegalStateException("Vosk模型未初始化");
-        }
-        
-        logger.debug("使用Vosk识别音频文件: {} ({} bytes)", audioFile.getAbsolutePath(), audioFile.length());
-        
-        try (Recognizer recognizer = new Recognizer(model, 16000)) {
-            // Read audio data
-            byte[] audioData = Files.readAllBytes(audioFile.toPath());
-            
-            // Skip WAV header if present (first 44 bytes)
-            int offset = 0;
-            int length = audioData.length;
-            if (audioData.length > 44 && audioData[0] == 'R' && audioData[1] == 'I' && 
-                audioData[2] == 'F' && audioData[3] == 'F') {
-                offset = 44;
-                length = audioData.length - 44;
-            }
-            
-            // Copy audio data without header
-            byte[] pcmData = new byte[length];
-            System.arraycopy(audioData, offset, pcmData, 0, length);
-            
-            // Process audio data
-            String result;
-            if (recognizer.acceptWaveForm(pcmData, length)) {
-                result = recognizer.getResult();
-            } else {
-                result = recognizer.getPartialResult();
-            }
-            
-            return extractTextFromJson(result);
-            
-        } catch (Exception e) {
-            logger.error("Vosk识别失败", e);
-            throw new Exception("Speech recognition failed: " + e.getMessage(), e);
-        }
-    }
-    
-    /**
-     * Extracts text from Vosk JSON result.
-     * 
-     * @param jsonResult JSON result from Vosk
-     * @return Extracted text
-     */
-    private String extractTextFromJson(String jsonResult) {
-        try {
-            JsonNode node = objectMapper.readTree(jsonResult);
-            if (node.has("text")) {
-                return node.get("text").asText();
-            } else if (node.has("partial")) {
-                return node.get("partial").asText();
-            }
-            return "";
-        } catch (Exception e) {
-            logger.warn("解析Vosk结果失败: {}", jsonResult, e);
-            return "";
-        }
-    }
-    
     private String performRecognition(File audioFile) {
         // If Vosk model is not initialized, use placeholder
         if (voskModel == null) {
@@ -249,8 +154,6 @@ public class ASRService {
             logger.debug("开始Vosk识别: {}", audioFile.getName());
             
             // Skip WAV header (assumes standard 44-byte header)
-            // Note: Standard WAV files have a 44-byte header. If using non-standard WAV formats,
-            // this may need adjustment or proper header parsing.
             fis.skip(44);
             
             byte[] buffer = new byte[4096];
@@ -258,7 +161,6 @@ public class ASRService {
             
             while ((bytesRead = fis.read(buffer)) != -1) {
                 if (recognizer.acceptWaveForm(buffer, bytesRead)) {
-                    // Partial result available
                     String partialResult = recognizer.getResult();
                     logger.debug("部分识别结果: {}", partialResult);
                 }
@@ -294,7 +196,6 @@ public class ASRService {
         try {
             JsonNode rootNode = objectMapper.readTree(voskResult);
             
-            // Vosk returns result in "text" field
             if (rootNode.has("text")) {
                 return rootNode.get("text").asText();
             }
