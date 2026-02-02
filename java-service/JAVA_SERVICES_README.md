@@ -1,146 +1,80 @@
-# Java Service REST API Implementation
+# Java Service Direct Adapter Implementation
 
 ## 概述 (Overview)
 
-本模块提供了Python服务的Java实现，以支持纯Java生态的Voice Agent系统。
+本模块提供了Python服务的Java实现，以支持纯Java生态的Voice Agent系统。与传统的REST API架构不同，本实现采用**Direct Adapter模式**，通过直接调用服务类来提供ASR、TTS和VAD功能，无需HTTP网络开销。
 
-This module provides Java implementations of the Python services to support a pure Java ecosystem for the Voice Agent system.
+This module provides Java implementations of the Python services to support a pure Java ecosystem for the Voice Agent system. Unlike traditional REST API architecture, this implementation uses a **Direct Adapter pattern** that directly calls service classes for ASR, TTS, and VAD functionality, eliminating HTTP network overhead.
 
-## 服务端点 (Service Endpoints)
+## 架构设计 (Architecture Design)
 
-### ASR Service (自动语音识别)
+### Direct Adapter模式
 
-**基础URL:** `http://localhost:8080/asr`
+本实现采用Direct Adapter模式，核心组件包括：
 
-#### 健康检查
+**Adapter层** (适配器层):
+- `DirectASRAdapter` - ASR适配器，直接调用ASRService
+- `DirectTTSAdapter` - TTS适配器，直接调用TTSService  
+- `DirectVADAdapter` - VAD适配器，直接调用VADService
+
+**Service层** (服务层):
+- `ASRService` - 语音识别服务实现（基于Vosk）
+- `TTSService` - 语音合成服务实现（基于MaryTTS，可选）
+- `VADService` - 语音活动检测服务实现（基于Silero VAD）
+
+**调用流程**:
 ```
-GET /asr/health
-```
-响应: `{"status": "healthy", "service": "asr"}`
-
-#### 语音识别
-```
-POST /asr/recognize
-Content-Type: multipart/form-data
-
-参数:
-- file: 音频文件 (WAV格式)
-
-响应:
-{
-  "text": "识别的文本",
-  "language": "zh"
-}
+应用程序 → Direct Adapter → Service → ML库 (Vosk/MaryTTS/Silero VAD)
 ```
 
-### TTS Service (文本转语音)
+### 与HTTP Adapter的区别
 
-**基础URL:** `http://localhost:8080/tts`
+本项目同时支持两种集成模式：
 
-#### 健康检查
-```
-GET /tts/health
-```
-响应: `{"status": "healthy", "service": "tts"}`
+1. **Direct Adapter模式**（推荐）:
+   - 直接在进程内调用服务
+   - 零网络延迟
+   - 更好的性能和资源利用
+   - 适合单体应用架构
 
-#### 语音合成
-```
-POST /tts
-Content-Type: application/json
+2. **HTTP Adapter模式**（可选）:
+   - 通过HTTP请求调用远程服务
+   - 支持分布式部署
+   - 服务可独立扩展
+   - 需要配置外部服务URL
 
-请求体:
-{
-  "text": "要合成的文本",
-  "voice": "zh-CN-XiaoxiaoNeural" (可选)
-}
+在`config/config.yaml`中可以选择使用哪种模式：
 
-响应: WAV音频文件
-```
+```yaml
+# Direct Adapter模式
+asr:
+  adapter: DirectASRAdapter
 
-#### 语音列表
-```
-GET /tts/voices
-```
-响应:
-```json
-{
-  "voices": [
-    {
-      "name": "zh-CN-XiaoxiaoNeural",
-      "gender": "Female",
-      "locale": "zh-CN"
-    }
-  ]
-}
-```
-
-### VAD Service (语音活动检测)
-
-**基础URL:** `http://localhost:8080/vad`
-
-#### 健康检查
-```
-GET /vad/health
-```
-响应: `{"status": "healthy", "service": "vad"}`
-
-#### 语音活动检测
-```
-POST /vad
-Content-Type: application/json
-
-请求体:
-{
-  "audio_data": "base64编码的音频数据",
-  "session_id": "会话ID" (可选, 默认为"default")
-}
-
-响应:
-{
-  "status": "start" | "end" | null,
-  "timestamp": 1234567890 (可选)
-}
-```
-
-#### 重置会话状态
-```
-POST /vad/reset
-Content-Type: application/json
-
-请求体:
-{
-  "session_id": "会话ID" (可选)
-}
-
-响应: {"status": "reset"}
-```
-
-#### 清除所有会话
-```
-POST /vad/clear
-
-响应: {"status": "cleared"}
+# HTTP Adapter模式  
+asr:
+  adapter: HttpASRAdapter
+  service_url: http://localhost:8080/asr/recognize
 ```
 
 ## 实现说明 (Implementation Notes)
 
 ### 当前状态 (Current Status)
 
-本实现提供了与Python服务完全兼容的REST API接口，并已集成实际的Java机器学习库：
+本实现采用Direct Adapter模式，通过Spring依赖注入直接调用服务类，已集成实际的Java机器学习库：
 
 ✅ **ASR服务** - 已集成 **Vosk** 离线语音识别  
 ⚠️ **TTS服务** - 已准备 **MaryTTS** 集成（需手动安装，见下文）  
 ✅ **VAD服务** - 已集成 **Silero VAD** (ONNX Runtime) 语音活动检测
 
-所有服务均使用纯 Java 实现，无需 Python 依赖。
+所有服务均使用纯 Java 实现，无需 Python 依赖，无需REST API服务器。
 
-This implementation provides REST API interfaces fully compatible with the Python services and has integrated actual Java machine learning libraries:
+This implementation uses the Direct Adapter pattern, calling service classes directly through Spring dependency injection, and has integrated actual Java machine learning libraries:
 
 ✅ **ASR Service** - Integrated **Vosk** for offline speech recognition  
 ⚠️ **TTS Service** - Ready for **MaryTTS** integration (requires manual setup, see below)  
 ✅ **VAD Service** - Integrated **Silero VAD** (ONNX Runtime) for voice activity detection
 
-All services are implemented in pure Java with no Python dependencies.
+All services are implemented in pure Java with no Python dependencies and no REST API server required.
 
 ### 已集成的库 (Integrated Libraries)
 
@@ -189,24 +123,29 @@ All services are implemented in pure Java with no Python dependencies.
 
 ### 配置 (Configuration)
 
-在`application.yaml`或命令行参数中配置服务参数:
+在`config/config.yaml`中配置服务参数和适配器选择:
 
 ```yaml
 # ASR Configuration
 asr:
+  adapter: DirectASRAdapter  # 使用Direct Adapter模式
   model:
-    path: models/vosk-model-small-cn-0.22
+    dir: models/vosk-model-small-cn-0.22
+  sample:
+    rate: 16000
   temp:
     dir: temp/asr
 
 # TTS Configuration
 tts:
+  adapter: DirectTTSAdapter  # 使用Direct Adapter模式
   voice: cmu-slt-hsmm
   temp:
     dir: temp/tts
 
 # VAD Configuration
 vad:
+  adapter: DirectVADAdapter  # 使用Direct Adapter模式
   model:
     path: models/silero_vad.onnx
   sampling:
@@ -216,6 +155,22 @@ vad:
     silence:
       duration:
         ms: 500
+```
+
+或使用HTTP Adapter模式（需要独立的REST服务）:
+
+```yaml
+asr:
+  adapter: HttpASRAdapter
+  service_url: http://localhost:8080/asr/recognize
+
+tts:
+  adapter: HttpTTSAdapter
+  service_url: http://localhost:8080/tts
+
+vad:
+  adapter: HttpVADAdapter
+  service_url: http://localhost:8080/vad
 ```
 
 ### 模型文件要求 (Model File Requirements)
@@ -237,95 +192,214 @@ vad:
 
 ## 部署 (Deployment)
 
-### 方式1: 仅Java服务 (Pure Java)
+### 方式1: Direct Adapter模式（推荐）
 
-修改`config/config.yaml`，将服务URL指向Java实现:
+使用Direct Adapter模式，服务直接集成在应用程序中：
+
+修改`config/config.yaml`，配置Direct Adapter:
 
 ```yaml
 asr:
-  service_url: http://localhost:8080/asr/recognize
+  adapter: DirectASRAdapter
+  model:
+    dir: models/vosk-model-small-cn-0.22
 
 vad:
-  service_url: http://localhost:8080/vad
+  adapter: DirectVADAdapter
+  model:
+    path: models/silero_vad.onnx
 
 tts:
-  service_url: http://localhost:8080/tts
+  adapter: DirectTTSAdapter
+  voice: cmu-slt-hsmm
 ```
 
-### 方式2: 混合模式 (Hybrid Mode)
+启动应用程序:
+```bash
+cd java-service
+mvn clean package
+java -jar target/bailing-java.jar config/config.yaml
+```
 
-保留现有的Python服务配置，继续使用独立的Python微服务。
+### 方式2: HTTP Adapter模式（分布式部署）
+
+如果需要将服务部署为独立的微服务，可以使用HTTP Adapter模式。
+
+**注意**: 当前代码库中没有REST API端点实现。如需使用HTTP Adapter模式，需要：
+1. 开发独立的REST API服务（可使用Python服务或开发新的Java REST服务）
+2. 在`config/config.yaml`中配置HTTP Adapter和服务URL
+
+```yaml
+asr:
+  adapter: HttpASRAdapter
+  service_url: http://localhost:8080/asr/recognize
+
+tts:
+  adapter: HttpTTSAdapter
+  service_url: http://localhost:8080/tts
+
+vad:
+  adapter: HttpVADAdapter
+  service_url: http://localhost:8080/vad
+```
 
 ## 开发指南 (Development Guide)
 
-### 服务已完成集成 (Services Integrated)
+### 核心组件 (Core Components)
 
-所有三个核心服务已完成实际ML库的集成：
+本实现包含以下核心组件：
 
-1. ✅ **ASRService** - 使用 Vosk 进行语音识别
-2. ✅ **TTSService** - 使用 MaryTTS 进行语音合成
-3. ✅ **VADService** - 使用 Silero VAD (ONNX Runtime) 进行语音活动检测
+#### 1. Service层（服务层）
+
+**ASRService** (`com.bailing.service.ASRService`)
+- 使用Vosk进行离线语音识别
+- 支持WAV格式音频（16kHz, 16-bit, mono）
+- 线程安全，可处理并发请求
+- Spring `@Service`注解，自动注入
+
+**TTSService** (`com.bailing.service.TTSService`)
+- 使用MaryTTS进行语音合成（需手动安装）
+- 支持多种语音和语言
+- 占位符模式：当MaryTTS不可用时生成静音WAV
+
+**VADService** (`com.bailing.service.VADService`)
+- 使用Silero VAD (ONNX Runtime)进行语音活动检测
+- 支持会话状态管理
+- 后备方案：简单的能量检测算法
+
+#### 2. Adapter层（适配器层）
+
+**DirectASRAdapter** (`com.bailing.asr.DirectASRAdapter`)
+- 实现`ASR`接口
+- 通过依赖注入直接调用`ASRService`
+- 零网络延迟
+
+**DirectTTSAdapter** (`com.bailing.tts.DirectTTSAdapter`)
+- 实现`TTS`接口
+- 通过依赖注入直接调用`TTSService`
+
+**DirectVADAdapter** (`com.bailing.vad.DirectVADAdapter`)
+- 实现`VAD`接口
+- 通过依赖注入直接调用`VADService`
+
+#### 3. HTTP Adapter（可选）
+
+如需远程服务调用，可使用HTTP Adapter:
+- `HttpASRAdapter` - 通过HTTP调用远程ASR服务
+- `HttpTTSAdapter` - 通过HTTP调用远程TTS服务
+- `HttpVADAdapter` - 通过HTTP调用远程VAD服务
 
 ### 扩展开发 (Extension Development)
 
-如果需要集成其他ML库或云服务，可以：
+#### 添加新的适配器
 
-#### 添加云服务ASR支持
-编辑 `com.bailing.service.ASRService`，添加云服务提供商支持:
+如需添加其他适配器（如调用云服务API），可以：
+
+1. 实现相应的接口（`ASR`, `TTS`, 或 `VAD`）
+2. 在`ComponentFactory`中注册新的适配器类型
+3. 在配置文件中指定新的适配器名称
+
+示例：添加Google Cloud ASR支持
 ```java
-// 例如: Google Cloud Speech, Azure Speech, AWS Transcribe
+public class GoogleCloudASRAdapter implements ASR {
+    @Override
+    public String recognize(byte[] audioData) throws Exception {
+        // 调用Google Cloud Speech-to-Text API
+    }
+}
 ```
 
-#### 添加其他TTS引擎
-编辑 `com.bailing.service.TTSService`，支持更多TTS引擎:
-```java
-// 例如: Google Cloud TTS, Azure Speech, Amazon Polly
-```
-
-#### 优化VAD检测
-编辑 `com.bailing.service.VADService`，优化检测算法:
-```java
-// 调整阈值、静音检测逻辑等
+配置:
+```yaml
+asr:
+  adapter: GoogleCloudASRAdapter
+  api_key: your-api-key
 ```
 
 ## 测试 (Testing)
 
 ### 前置准备
-确保模型文件已下载到正确位置:
-- `models/vosk-model-small-cn-0.22/` (Vosk ASR模型)
-- `models/silero_vad.onnx` (Silero VAD模型)
 
-启动服务后，可以使用curl测试各个端点:
+1. 确保模型文件已下载到正确位置:
+   - `models/vosk-model-small-cn-0.22/` (Vosk ASR模型)
+   - `models/silero_vad.onnx` (Silero VAD模型)
 
-```bash
-# 测试ASR健康检查
-curl http://localhost:8080/asr/health
+2. 配置`config/config.yaml`使用Direct Adapter:
+   ```yaml
+   asr:
+     adapter: DirectASRAdapter
+   tts:
+     adapter: DirectTTSAdapter
+   vad:
+     adapter: DirectVADAdapter
+   ```
 
-# 测试TTS健康检查
-curl http://localhost:8080/tts/health
+3. 构建并运行应用程序:
+   ```bash
+   cd java-service
+   mvn clean package
+   java -jar target/bailing-java.jar config/config.yaml
+   ```
 
-# 测试VAD健康检查
-curl http://localhost:8080/vad/health
+### 单元测试
 
-# 测试TTS合成
-curl -X POST http://localhost:8080/tts \
-  -H "Content-Type: application/json" \
-  -d '{"text":"你好世界"}' \
-  --output test.wav
+可以编写单元测试来验证各个服务：
 
-# 列出可用语音
-curl http://localhost:8080/tts/voices
+```java
+@SpringBootTest
+public class ASRServiceTest {
+    
+    @Autowired
+    private ASRService asrService;
+    
+    @Test
+    public void testRecognize() throws Exception {
+        byte[] audioData = loadTestAudio("test.wav");
+        Map<String, String> result = asrService.recognize(audioData);
+        assertNotNull(result.get("text"));
+    }
+}
+```
+
+### 集成测试
+
+Direct Adapter模式的集成测试更简单，因为不需要启动HTTP服务器：
+
+```java
+@SpringBootTest
+public class DirectASRAdapterTest {
+    
+    @Autowired
+    private DirectASRAdapter asrAdapter;
+    
+    @Test
+    public void testRecognizeWithDirectAdapter() throws Exception {
+        byte[] audioData = loadTestAudio("test.wav");
+        String text = asrAdapter.recognize(audioData);
+        assertNotNull(text);
+    }
+}
 ```
 
 ## 优势 (Advantages)
 
-1. **纯Java生态**: 无需Python依赖，简化部署
-2. **统一技术栈**: 所有服务使用相同的语言和框架
-3. **离线运行**: Vosk和Silero VAD支持完全离线运行
-4. **更好的类型安全**: Java的静态类型系统提供更好的安全性
-5. **易于维护**: 统一的代码库和构建流程
-6. **云原生**: 更容易与Java生态的云服务集成
-7. **高性能**: 直接内存操作和ONNX Runtime优化
+### Direct Adapter模式的优势
+
+1. **零网络延迟**: 直接方法调用，无HTTP开销
+2. **更好的性能**: 避免序列化/反序列化和网络传输
+3. **简化部署**: 无需启动独立的REST服务器
+4. **易于调试**: 直接的方法调用栈，易于跟踪和调试
+5. **类型安全**: Java强类型系统，编译时检查
+6. **资源共享**: 服务实例可以共享资源（如模型加载）
+
+### 纯Java生态的优势
+
+1. **统一技术栈**: 所有服务使用相同的语言和框架
+2. **离线运行**: Vosk和Silero VAD支持完全离线运行
+3. **更好的类型安全**: Java的静态类型系统提供更好的安全性
+4. **易于维护**: 统一的代码库和构建流程
+5. **高性能**: 直接内存操作和ONNX Runtime优化
+6. **Spring生态**: 利用Spring Boot的依赖注入、配置管理等特性
 
 ## 故障排除 (Troubleshooting)
 
@@ -346,17 +420,27 @@ curl http://localhost:8080/tts/voices
 1. 确保 `silero_vad.onnx` 模型文件完整下载
 2. 检查ONNX Runtime依赖是否正确安装
 3. 查看详细错误日志
+4. 系统会自动降级到能量检测后备方案
+
+### Direct Adapter初始化失败
+如果Direct Adapter报告服务未初始化:
+1. 确保Spring Boot应用正确启动
+2. 检查`@Service`注解是否存在于服务类上
+3. 确认`ComponentFactoryConfig`正确配置
+4. 查看Spring启动日志中的错误信息
 
 ## 下一步 (Next Steps)
 
-1. ✅ ~~选择并集成实际的ASR库~~ (已完成 - Vosk)
+1. ✅ ~~选择并集成实际的ASR库~~ (已完成 - Vosk with DirectASRAdapter)
 2. ⚠️ ~~选择并集成实际的TTS库~~ (MaryTTS已准备，需手动安装)
-3. ✅ ~~选择并集成实际的VAD库~~ (已完成 - Silero VAD)
-4. 添加单元测试和集成测试
-5. 优化性能和资源使用
-6. 添加监控和日志记录
-7. 支持更多语言和模型
-8. 考虑云服务API作为TTS替代方案（Google Cloud TTS、Azure Speech等）
+3. ✅ ~~选择并集成实际的VAD库~~ (已完成 - Silero VAD with DirectVADAdapter)
+4. ✅ ~~实现Direct Adapter模式~~ (已完成 - DirectASRAdapter, DirectTTSAdapter, DirectVADAdapter)
+5. 添加单元测试和集成测试
+6. 优化性能和资源使用
+7. 添加监控和日志记录
+8. 支持更多语言和模型
+9. 考虑云服务API作为TTS替代方案（Google Cloud TTS、Azure Speech等）
+10. （可选）开发REST API端点以支持HTTP Adapter模式
 
 ## 模型下载和配置 (Model Download and Configuration)
 
@@ -385,11 +469,14 @@ cd ..
 ```
 
 **配置:**
-在 `config/config-java-only.yaml` 或 `application.properties` 中设置模型路径:
+在 `config/config.yaml` 中设置模型路径:
 ```yaml
 asr:
-  model_dir: models/vosk-model-small-cn-0.22
-  sample_rate: 16000
+  adapter: DirectASRAdapter
+  model:
+    dir: models/vosk-model-small-cn-0.22
+  sample:
+    rate: 16000
 ```
 
 ### TTS - MaryTTS 声音包 (可选 / Optional)
@@ -423,6 +510,7 @@ asr:
 **配置:**
 ```yaml
 tts:
+  adapter: DirectTTSAdapter
   voice: cmu-slt-hsmm
 ```
 
@@ -454,10 +542,16 @@ cd ..
 **配置:**
 ```yaml
 vad:
-  model_path: models/silero_vad.onnx
+  adapter: DirectVADAdapter
+  model:
+    path: models/silero_vad.onnx
   threshold: 0.5
-  sampling_rate: 16000
-  min_silence_duration_ms: 500
+  sampling:
+    rate: 16000
+  min:
+    silence:
+      duration:
+        ms: 500
 ```
 
 **后备方案:**
@@ -519,29 +613,29 @@ echo "MaryTTS 将使用内置声音包，无需额外下载。"
 cd java-service
 mvn clean package
 
-# 运行服务
-java -jar target/bailing-java.jar
+# 运行服务 (使用Direct Adapter模式)
+java -jar target/bailing-java.jar config/config.yaml
 ```
 
 ### 验证服务
 
+Direct Adapter模式中，服务在应用程序启动时自动初始化。查看日志验证服务状态：
+
 ```bash
-# 检查服务健康状态
-curl http://localhost:8080/asr/health
-curl http://localhost:8080/tts/health
-curl http://localhost:8080/vad/health
+# 查看应用程序日志
+tail -f logs/application.log
 
-# 测试 TTS (文本转语音)
-curl -X POST http://localhost:8080/tts \
-  -H "Content-Type: application/json" \
-  -d '{"text":"Hello world"}' \
-  --output test.wav
-
-# 播放生成的音频
-# Linux: aplay test.wav
-# macOS: afplay test.wav
-# Windows: start test.wav
+# 期望看到的日志输出:
+# ✅ Vosk ASR模型初始化成功
+# ✅ Silero VAD模型加载成功
+# ✅ Initialized DirectASRAdapter
+# ✅ Initialized DirectTTSAdapter
+# ✅ Initialized DirectVADAdapter
 ```
+
+如需测试服务功能，可以编写单元测试或使用应用程序的主要功能（语音对话）。
+
+**注意**: Direct Adapter模式不提供REST API端点，因此无法使用curl直接测试。如需HTTP接口，请参考"HTTP Adapter模式"部分。
 
 ### 故障排除
 
