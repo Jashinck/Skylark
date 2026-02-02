@@ -1,4 +1,4 @@
-# 百聆(Bailing) 配置文件
+# 云雀(Skylark) 配置文件
 
 mode: local
 wake_word: ""
@@ -36,7 +36,7 @@ dialogue:
 
 memory:
   path: tmp/memory.json
-  name: 百聆
+  name: 云雀
   role: 智能语音助手
   personality: 友好、专业、乐于助人
   capabilities: 我可以进行语音对话，回答问题，帮助您完成各种任务。

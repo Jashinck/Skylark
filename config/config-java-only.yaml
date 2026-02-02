@@ -1,5 +1,5 @@
-# 百聆(Bailing) 配置文件 - 纯Java模式
-# Bailing Configuration - Pure Java Mode
+# 云雀(Skylark) 配置文件 - 纯Java模式
+# Skylark Configuration - Pure Java Mode
 
 mode: local
 wake_word: ""
@@ -50,7 +50,7 @@ dialogue:
 # 记忆配置
 memory:
   path: tmp/memory.json
-  name: 百聆
+  name: 云雀
   role: 智能语音助手
   personality: 友好、专业、乐于助人
   capabilities: 我可以进行语音对话，回答问题，帮助您完成各种任务。
