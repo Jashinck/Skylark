@@ -29,7 +29,7 @@ import java.util.Map;
  * <p>Configuration format example:</p>
  * <pre>
  * asr:
- *   class_name: "com.bailing.asr.AlibabaASR"
+ *   class_name: "org.skylark.asr.AlibabaASR"
  *   api_key: "${ASR_API_KEY}"
  *   sample_rate: 16000
  * </pre>
@@ -71,7 +71,7 @@ public class ComponentFactory {
      * <p>Example configuration:</p>
      * <pre>
      * {
-     *   "class_name": "com.bailing.asr.AlibabaASR",
+     *   "class_name": "org.skylark.asr.AlibabaASR",
      *   "api_key": "your-api-key",
      *   "sample_rate": 16000
      * }
@@ -94,7 +94,7 @@ public class ComponentFactory {
      * <p>Example configuration:</p>
      * <pre>
      * {
-     *   "class_name": "com.bailing.vad.WebRTCVAD",
+     *   "class_name": "org.skylark.vad.WebRTCVAD",
      *   "sample_rate": 16000,
      *   "frame_duration_ms": 30
      * }
@@ -117,7 +117,7 @@ public class ComponentFactory {
      * <p>Example configuration:</p>
      * <pre>
      * {
-     *   "class_name": "com.bailing.tts.AlibabaTTS",
+     *   "class_name": "org.skylark.tts.AlibabaTTS",
      *   "api_key": "your-api-key",
      *   "voice": "xiaoyun"
      * }
@@ -140,7 +140,7 @@ public class ComponentFactory {
      * <p>Example configuration:</p>
      * <pre>
      * {
-     *   "class_name": "com.bailing.llm.OpenAILLM",
+     *   "class_name": "org.skylark.llm.OpenAILLM",
      *   "api_key": "your-api-key",
      *   "model": "gpt-4",
      *   "temperature": 0.7
@@ -164,7 +164,7 @@ public class ComponentFactory {
      * <p>Example configuration:</p>
      * <pre>
      * {
-     *   "class_name": "com.bailing.audio.JavaSoundRecorder",
+     *   "class_name": "org.skylark.audio.JavaSoundRecorder",
      *   "sample_rate": 16000,
      *   "channels": 1
      * }
@@ -187,7 +187,7 @@ public class ComponentFactory {
      * <p>Example configuration:</p>
      * <pre>
      * {
-     *   "class_name": "com.bailing.audio.JavaSoundPlayer",
+     *   "class_name": "org.skylark.audio.JavaSoundPlayer",
      *   "sample_rate": 16000,
      *   "buffer_size": 4096
      * }
@@ -350,7 +350,7 @@ public class ComponentFactory {
         
         try {
             // Use fully qualified class name for security
-            String fullClassName = "com.bailing.application.service." + serviceName;
+            String fullClassName = "org.skylark.application.service." + serviceName;
             Class<?> serviceClass = Class.forName(fullClassName);
             Object service = springContext.getBean(serviceClass);
             

@@ -1,5 +1,5 @@
-# Bailing Voice Agent Configuration
-# 百聆智能语音助手配置
+# Skylark Voice Agent Configuration
+# 云雀智能语音助手配置
 
 server:
   port: 8080
