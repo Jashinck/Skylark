@@ -1,6 +1,6 @@
-package com.bailing.asr;
+package com.bailing.infrastructure.adapter;
 
-import com.bailing.service.ASRService;
+import com.bailing.application.service.ASRService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

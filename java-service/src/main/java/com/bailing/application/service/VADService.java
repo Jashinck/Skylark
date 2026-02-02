@@ -1,4 +1,4 @@
-package com.bailing.service;
+package com.bailing.application.service;
 
 import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
@@ -11,8 +11,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import ai.onnxruntime.*;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -438,7 +436,6 @@ public class VADService {
      * @return Detection status
      */
     private String performEnergyBasedDetection(byte[] audioBytes, VADState state) {
-    private String performEnergyDetection(byte[] audioBytes, VADState state) {
         // Convert bytes to int16 samples
         ByteBuffer buffer = ByteBuffer.wrap(audioBytes).order(ByteOrder.LITTLE_ENDIAN);
         int numSamples = audioBytes.length / 2;

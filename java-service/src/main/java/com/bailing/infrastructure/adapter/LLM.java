@@ -1,4 +1,4 @@
-package com.bailing.llm;
+package com.bailing.infrastructure.adapter;
 
 import java.util.List;
 import java.util.Map;

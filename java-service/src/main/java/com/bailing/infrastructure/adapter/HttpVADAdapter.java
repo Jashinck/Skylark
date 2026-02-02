@@ -1,4 +1,4 @@
-package com.bailing.vad;
+package com.bailing.infrastructure.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

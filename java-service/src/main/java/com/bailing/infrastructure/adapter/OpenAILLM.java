@@ -1,4 +1,4 @@
-package com.bailing.llm;
+package com.bailing.infrastructure.adapter;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,40 +13,43 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * Ollama LLM implementation supporting streaming chat completions.
- * Compatible with Ollama's local LLM API.
+ * OpenAI-compatible LLM implementation supporting streaming chat completions.
+ * Compatible with OpenAI API and other providers following the same API format.
  */
-public class OllamaLLM implements LLM {
+public class OpenAILLM implements LLM {
     
-    private static final Logger logger = LoggerFactory.getLogger(OllamaLLM.class);
+    private static final Logger logger = LoggerFactory.getLogger(OpenAILLM.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final String DEFAULT_URL = "http://localhost:11434";
     
     private final String url;
+    private final String apiKey;
     private final String modelName;
     private final WebClient webClient;
     
     /**
-     * Constructs an Ollama LLM client.
+     * Constructs an OpenAI LLM client.
      * 
      * @param config Configuration map containing:
-     *               - url: API endpoint URL (optional, defaults to http://localhost:11434)
+     *               - url: API endpoint URL (required)
+     *               - apiKey: API authentication key (required)
      *               - modelName: Model identifier (required)
      */
-    public OllamaLLM(Map<String, Object> config) {
-        this.url = config.containsKey("url") ? (String) config.get("url") : DEFAULT_URL;
+    public OpenAILLM(Map<String, Object> config) {
+        this.url = (String) config.get("url");
+        this.apiKey = (String) config.get("apiKey");
         this.modelName = (String) config.get("modelName");
         
-        if (modelName == null) {
-            throw new IllegalArgumentException("Ollama LLM requires modelName in config");
+        if (url == null || apiKey == null || modelName == null) {
+            throw new IllegalArgumentException("OpenAI LLM requires url, apiKey, and modelName in config");
         }
         
         this.webClient = WebClient.builder()
                 .baseUrl(url)
+                .defaultHeader("Authorization", "Bearer " + apiKey)
                 .defaultHeader("Content-Type", "application/json")
                 .build();
         
-        logger.info("Ollama LLM initialized with URL: {} and model: {}", url, modelName);
+        logger.info("OpenAI LLM initialized with URL: {} and model: {}", url, modelName);
     }
     
     @Override
@@ -60,7 +63,7 @@ public class OllamaLLM implements LLM {
         
         try {
             Flux<String> responseFlux = webClient.post()
-                    .uri("/api/chat")
+                    .uri("/chat/completions")
                     .bodyValue(requestBody)
                     .retrieve()
                     .bodyToFlux(String.class);
@@ -68,10 +71,10 @@ public class OllamaLLM implements LLM {
             responseFlux
                     .doOnNext(line -> {
                         try {
-                            processNDJSONLine(line, onChunk);
+                            processSSELine(line, onChunk);
                         } catch (Exception e) {
-                            logger.error("Error processing NDJSON line: {}", line, e);
-                            throw new RuntimeException("Failed to process NDJSON response", e);
+                            logger.error("Error processing SSE line: {}", line, e);
+                            throw new RuntimeException("Failed to process SSE response", e);
                         }
                     })
                     .doOnComplete(() -> {
@@ -85,42 +88,52 @@ public class OllamaLLM implements LLM {
                     
         } catch (Exception e) {
             logger.error("Failed to execute streaming chat", e);
-            throw new Exception("Ollama chat request failed", e);
+            throw new Exception("OpenAI chat request failed", e);
         }
     }
     
     /**
-     * Processes a single NDJSON line from the stream.
+     * Processes a single SSE line from the stream.
      * 
-     * @param line NDJSON formatted line (one complete JSON object)
+     * @param line SSE formatted line (e.g., "data: {...}")
      * @param onChunk Callback to receive extracted content
      */
-    private void processNDJSONLine(String line, Consumer<String> onChunk) throws Exception {
+    private void processSSELine(String line, Consumer<String> onChunk) throws Exception {
         line = line.trim();
         
         if (line.isEmpty()) {
             return;
         }
         
+        if (!line.startsWith("data: ")) {
+            logger.trace("Skipping non-data SSE line: {}", line);
+            return;
+        }
+        
+        String data = line.substring(6).trim();
+        
+        if ("[DONE]".equals(data)) {
+            logger.debug("Received [DONE] signal");
+            return;
+        }
+        
         try {
-            JsonNode jsonNode = objectMapper.readTree(line);
+            JsonNode jsonNode = objectMapper.readTree(data);
+            JsonNode choices = jsonNode.get("choices");
             
-            JsonNode doneNode = jsonNode.get("done");
-            if (doneNode != null && doneNode.asBoolean()) {
-                logger.debug("Received done signal");
-                return;
-            }
-            
-            JsonNode message = jsonNode.get("message");
-            if (message != null && message.has("content")) {
-                String content = message.get("content").asText();
-                if (content != null && !content.isEmpty()) {
-                    logger.trace("Extracted content chunk: {}", content);
-                    onChunk.accept(content);
+            if (choices != null && choices.isArray() && choices.size() > 0) {
+                JsonNode delta = choices.get(0).get("delta");
+                
+                if (delta != null && delta.has("content")) {
+                    String content = delta.get("content").asText();
+                    if (content != null && !content.isEmpty()) {
+                        logger.trace("Extracted content chunk: {}", content);
+                        onChunk.accept(content);
+                    }
                 }
             }
         } catch (Exception e) {
-            logger.warn("Failed to parse JSON from NDJSON line: {}", line, e);
+            logger.warn("Failed to parse JSON from SSE data: {}", data, e);
             throw e;
         }
     }

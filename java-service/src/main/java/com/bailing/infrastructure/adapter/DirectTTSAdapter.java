@@ -1,6 +1,6 @@
-package com.bailing.tts;
+package com.bailing.infrastructure.adapter;
 
-import com.bailing.service.TTSService;
+import com.bailing.application.service.TTSService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,6 +1,6 @@
-package com.bailing.vad;
+package com.bailing.infrastructure.adapter;
 
-import com.bailing.service.VADService;
+import com.bailing.application.service.VADService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

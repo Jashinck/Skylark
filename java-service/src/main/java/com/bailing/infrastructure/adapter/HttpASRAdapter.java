@@ -1,6 +1,6 @@
-package com.bailing.asr;
+package com.bailing.infrastructure.adapter;
 
-import com.bailing.utils.AudioUtils;
+import com.bailing.common.util.AudioUtils;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;

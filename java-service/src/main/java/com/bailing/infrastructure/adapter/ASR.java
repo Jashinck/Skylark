@@ -1,4 +1,4 @@
-package com.bailing.asr;
+package com.bailing.infrastructure.adapter;
 
 /**
  * ASR (Automatic Speech Recognition) Interface

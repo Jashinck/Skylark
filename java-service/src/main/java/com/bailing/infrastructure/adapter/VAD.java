@@ -1,4 +1,4 @@
-package com.bailing.vad;
+package com.bailing.infrastructure.adapter;
 
 /**
  * VAD (Voice Activity Detection) Interface

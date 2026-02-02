@@ -1,4 +1,4 @@
-package com.bailing.utils;
+package com.bailing.common.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;

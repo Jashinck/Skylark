@@ -1,4 +1,4 @@
-package com.bailing.service;
+package com.bailing.application.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,10 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.vosk.Model;
 import org.vosk.Recognizer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.File;
 import java.io.FileInputStream;
@@ -234,6 +231,10 @@ public class ASRService {
             return "";
         } catch (Exception e) {
             logger.warn("解析Vosk结果失败: {}", jsonResult, e);
+            return "";
+        }
+    }
+    
     private String performRecognition(File audioFile) {
         // If Vosk model is not initialized, use placeholder
         if (voskModel == null) {

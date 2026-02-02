@@ -1,4 +1,4 @@
-package com.bailing.tts;
+package com.bailing.infrastructure.adapter;
 
 /**
  * TTS (Text-To-Speech) Interface

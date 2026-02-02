@@ -1,4 +1,4 @@
-package com.bailing.core;
+package com.bailing.domain.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
