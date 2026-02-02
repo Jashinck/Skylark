@@ -2,9 +2,9 @@
 
 ## 任务概述 (Task Overview)
 
-**目标**: 将python-services模块的代码转译为Java，打造纯Java生态的Voice Agent
+**目标**: 实现纯Java生态的Voice Agent系统，采用Spring Boot + DDD架构
 
-**Target**: Translate python-services module code to Java to build a pure Java ecosystem Voice Agent
+**Target**: Implement a pure Java ecosystem Voice Agent system using Spring Boot + DDD architecture
 
 ## 完成状态 (Completion Status)
 
@@ -14,21 +14,21 @@
 
 ### 1. 完整的Java服务实现 (Complete Java Service Implementation)
 
-创建了3个REST控制器和3个服务实现类，完全复刻了Python服务的功能：
+创建了3个REST控制器和3个服务实现类，提供完整的语音交互功能：
 
-- **ASRController** + **ASRService**: 语音识别服务
-- **TTSController** + **TTSService**: 文本转语音服务  
-- **VADController** + **VADService**: 语音活动检测服务
+- **ASRController** + **ASRService**: 语音识别服务 (基于Vosk)
+- **TTSController** + **TTSService**: 文本转语音服务 (基于MaryTTS)
+- **VADController** + **VADService**: 语音活动检测服务 (基于Silero VAD)
 
-### 2. API完全兼容 (Full API Compatibility)
+### 2. REST API服务 (REST API Services)
 
-Java实现提供了与Python服务完全兼容的REST API接口：
+纯Java实现提供完整的REST API接口：
 
-| 服务 | Python端口 | Java端口 | 状态 |
-|-----|----------|---------|-----|
-| ASR | 8001 | 8080/asr | ✅ 兼容 |
-| TTS | 8003 | 8080/tts | ✅ 兼容 |
-| VAD | 8002 | 8080/vad | ✅ 兼容 |
+| 服务 | 端口路径 | 实现技术 | 状态 |
+|-----|---------|---------|-----|
+| ASR | 8080/asr | Vosk 0.3.45 | ✅ 可用 |
+| TTS | 8080/tts | MaryTTS 5.2 | ⚠️ 需配置 |
+| VAD | 8080/vad | Silero VAD (ONNX) | ✅ 可用 |
 
 ### 3. 完整的文档体系 (Complete Documentation)
 
@@ -67,7 +67,7 @@ Java实现提供了与Python服务完全兼容的REST API接口：
 
 ### 部署选项 (Deployment Options)
 
-#### 选项1: 纯Java模式 ⭐ 新功能
+#### 纯Java单体部署 ⭐ 推荐
 
 ```bash
 java -jar ./target/skylark.jar config/config-java-only.yaml
@@ -80,16 +80,16 @@ java -jar ./target/skylark.jar config/config-java-only.yaml
 - 更好的类型安全
 - 云原生友好
 
-#### 选项2: 混合模式 (原有方式)
+#### Docker容器化部署
 
 ```bash
 docker-compose up -d
 ```
 
 **优势**:
-- 利用Python生态的成熟ML库
-- 微服务架构
-- 独立扩展各服务
+- 容器化部署
+- 易于扩展
+- 环境隔离
 
 ## 文件清单 (File List)
 
@@ -198,23 +198,23 @@ curl http://localhost:8080/tts/voices
 
 ## 技术优势 (Technical Advantages)
 
-### 相比Python实现 (Compared to Python Implementation)
+### 纯Java架构优势 (Pure Java Architecture Advantages)
 
-| 特性 | Python | Java | 优势 |
-|-----|--------|------|-----|
-| 类型安全 | 动态类型 | 静态类型 | ✅ Java更安全 |
-| 性能 | 解释执行 | JIT编译 | ✅ Java更快 |
-| 部署 | 需要Python环境 | 单JAR | ✅ Java更简单 |
-| 内存管理 | GC | 可控GC | ✅ Java更可控 |
-| 企业支持 | 较少 | 广泛 | ✅ Java更完善 |
-| ML生态 | 丰富 | 发展中 | ⚖️ Python更成熟 |
+| 特性 | 优势说明 |
+|-----|---------|
+| 类型安全 | 静态类型系统，编译期错误检测 |
+| 性能 | JIT编译优化，高性能运行时 |
+| 部署 | 单JAR包，无需额外运行时环境 |
+| 内存管理 | 成熟的GC机制，可精细调优 |
+| 企业支持 | Spring生态完善，企业级特性丰富 |
+| 可维护性 | 统一技术栈，降低维护成本 |
 
-### 混合架构优势 (Hybrid Architecture Advantages)
+### ML库集成 (ML Library Integration)
 
-保留两种实现的优势：
-- **Python服务**: 利用成熟的ML库（FunASR、Edge-TTS、Silero VAD）
-- **Java服务**: 统一技术栈，简化部署
-- **灵活切换**: 通过配置文件轻松切换实现
+当前集成的Java ML库：
+- **Vosk**: 离线语音识别，支持多语言
+- **MaryTTS**: 开源文本转语音引擎
+- **ONNX Runtime**: 通用ML模型推理引擎，支持Silero VAD
 
 ## 安全性 (Security)
 
@@ -239,18 +239,19 @@ curl http://localhost:8080/tts/voices
 
 ## 结论 (Conclusion)
 
-本项目成功实现了将Python服务转译为Java的目标，为Voice Agent系统提供了纯Java生态的支持。实现包括：
+本项目成功实现了纯Java生态的Voice Agent系统，采用现代化的Spring Boot + DDD架构。实现特点：
 
 1. ✅ 完整的REST API实现
-2. ✅ 与Python服务的API兼容性
+2. ✅ 集成Java生态ML库 (Vosk, MaryTTS, ONNX Runtime)
 3. ✅ 全面的文档和部署指南
 4. ✅ 经过测试和验证的代码
 5. ✅ 高质量的代码和设计
 6. ✅ 安全性验证通过
 
-该实现为项目提供了更大的灵活性，使用户可以根据需求选择：
-- **纯Java部署**: 简化架构，统一技术栈
-- **混合部署**: 利用Python和Java各自的优势
+该实现为项目提供了：
+- **统一技术栈**: 纯Java实现，简化开发和维护
+- **企业级架构**: DDD分层设计，清晰的职责分离
+- **云原生友好**: 单JAR部署，容易容器化和微服务化
 
 ## 联系和支持 (Contact & Support)
 
