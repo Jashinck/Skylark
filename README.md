@@ -75,11 +75,11 @@ MaryTTS 5.2.1 在 Maven Central 有依赖解析问题。要使用 MaryTTS:
 
 ```bash
 # 1. 构建Java服务
-cd java-service
+cd root
 mvn clean package -DskipTests
 
 # 2. 启动服务（使用纯Java配置）
-java -jar target/bailing-java.jar config/config-java-only.yaml
+java -jar target/skylark.jar config/config-java-only.yaml
 ```
 
 ### Docker部署
@@ -107,27 +107,48 @@ docker-compose up -d
 
 所有服务均使用纯 Java 实现，无需 Python 依赖。
 
-详见: [开发指南](java-service/JAVA_SERVICES_README.md)
+详见: [开发指南](./JAVA_SERVICES_README.md)
 
 ## 📁 项目结构 (Project Structure)
 
+### 企业级DDD分层架构 (Enterprise DDD Layered Architecture)
+
+本项目采用标准的企业级SpringBoot DDD（领域驱动设计）分层架构：
+
 ```
 skylark/
-├── java-service/          # Java服务
-│   ├── src/main/java/com/bailing/
-│   │   ├── service/       # 服务实现 (ASR, TTS, VAD)
-│   │   ├── asr/          # ASR适配器
-│   │   ├── tts/          # TTS适配器
-│   │   ├── vad/          # VAD适配器
-│   │   ├── config/       # Spring配置
-│   │   └── ...
+├── ./                        # Java服务
+│   ├── src/main/java/org/skylark/
+│   │   ├── api/                        # API接口层
+│   │   │   └── controller/             # REST控制器
+│   │   ├── application/                # 应用层
+│   │   │   ├── dto/                    # 数据传输对象
+│   │   │   └── service/                # 应用服务 (ASR, TTS, VAD)
+│   │   ├── domain/                     # 领域层
+│   │   │   ├── model/                  # 领域模型 (Dialogue, Message)
+│   │   │   └── service/                # 领域服务接口
+│   │   ├── infrastructure/             # 基础设施层
+│   │   │   ├── adapter/                # 适配器 (ASR, TTS, VAD, LLM)
+│   │   │   └── config/                 # Spring配置
+│   │   └── common/                     # 公共层
+│   │       ├── constant/               # 常量定义
+│   │       ├── exception/              # 异常处理
+│   │       └── util/                   # 工具类
 │   └── pom.xml
-├── config/                # 配置文件
-│   ├── config-java-only.yaml  # 纯Java配置
-│   └── config.yaml            # 备用配置
-├── web/                   # Web前端
-└── docker-compose.yml     # Docker编排
+├── config/                              # 配置文件
+│   ├── config-java-only.yaml          # 纯Java配置
+│   └── config.yaml                     # 备用配置
+├── web/                                 # Web前端
+└── docker-compose.yml                   # Docker编排
 ```
+
+### 架构说明 (Architecture Description)
+
+- **API层** (`api`): REST API接口，提供对外服务
+- **应用层** (`application`): 业务逻辑编排，服务组合
+- **领域层** (`domain`): 核心业务模型和规则
+- **基础设施层** (`infrastructure`): 外部依赖适配，技术实现
+- **公共层** (`common`): 通用工具和组件
 
 ---
 

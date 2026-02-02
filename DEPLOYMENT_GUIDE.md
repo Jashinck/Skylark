@@ -18,13 +18,13 @@ This guide explains how to deploy the pure Java version of the Voice Agent syste
 ### 1. 编译Java服务 (Build Java Service)
 
 ```bash
-cd java-service
+cd root
 mvn clean package -DskipTests
 ```
 
-构建成功后，将在 `target/` 目录下生成 `bailing-java.jar` 文件。
+构建成功后，将在 `target/` 目录下生成 `skylark.jar` 文件。
 
-After successful build, the `bailing-java.jar` file will be generated in the `target/` directory.
+After successful build, the `skylark.jar` file will be generated in the `target/` directory.
 
 ### 2. 配置服务 (Configure Services)
 
@@ -48,7 +48,7 @@ llm:
 ### 3. 启动服务 (Start Service)
 
 ```bash
-java -jar java-service/target/bailing-java.jar config/my-config.yaml
+java -jar ./target/skylark.jar config/my-config.yaml
 ```
 
 服务将在以下端口启动：
@@ -124,7 +124,7 @@ After=network.target
 Type=simple
 User=voice-agent
 WorkingDirectory=/opt/voice-agent
-ExecStart=/usr/bin/java -jar /opt/voice-agent/java-service/target/bailing-java.jar /opt/voice-agent/config/config-java-only.yaml
+ExecStart=/usr/bin/java -jar /opt/voice-agent/./target/skylark.jar /opt/voice-agent/config/config-java-only.yaml
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -154,7 +154,7 @@ FROM openjdk:17-slim
 WORKDIR /app
 
 # 复制构建产物
-COPY java-service/target/bailing-java.jar /app/
+COPY ./target/skylark.jar /app/
 COPY config/ /app/config/
 
 # 创建必要的目录
@@ -164,7 +164,7 @@ RUN mkdir -p /app/tmp /app/logs
 EXPOSE 8080
 
 # 启动服务
-CMD ["java", "-jar", "bailing-java.jar", "config/config-java-only.yaml"]
+CMD ["java", "-jar", "skylark.jar", "config/config-java-only.yaml"]
 ```
 
 构建并运行：
@@ -194,7 +194,7 @@ java -Xms2g -Xmx4g \
   -XX:MaxGCPauseMillis=200 \
   -XX:+HeapDumpOnOutOfMemoryError \
   -XX:HeapDumpPath=/app/logs/heap_dump.hprof \
-  -jar bailing-java.jar config/config-java-only.yaml
+  -jar skylark.jar config/config-java-only.yaml
 ```
 
 ### 配置文件优化 (Configuration Optimization)
@@ -228,7 +228,7 @@ vad:
 logging:
   level:
     root: INFO
-    com.bailing: DEBUG
+    org.skylark: DEBUG
   file:
     name: logs/voice-agent.log
   pattern:
