@@ -350,7 +350,7 @@ public class ComponentFactory {
         
         try {
             // Use fully qualified class name for security
-            String fullClassName = "com.bailing.service." + serviceName;
+            String fullClassName = "com.bailing.application.service." + serviceName;
             Class<?> serviceClass = Class.forName(fullClassName);
             Object service = springContext.getBean(serviceClass);
             
