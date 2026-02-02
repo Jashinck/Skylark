@@ -3,7 +3,7 @@ version: '3.8'
 services:
   java-service:
     build: ./java-service
-    container_name: bailing-java
+    container_name: skylark
     ports:
       - "8080:8080"
     environment:
@@ -14,7 +14,7 @@ services:
       - ./tmp:/app/tmp
       - ./logs:/app/logs
     restart: unless-stopped
-    command: ["java", "-jar", "bailing-java.jar", "config/config-java-only.yaml"]
+    command: ["java", "-jar", "skylark.jar", "config/config-java-only.yaml"]
 
 networks:
   default:

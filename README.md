@@ -75,11 +75,11 @@ MaryTTS 5.2.1 在 Maven Central 有依赖解析问题。要使用 MaryTTS:
 
 ```bash
 # 1. 构建Java服务
-cd java-service
+cd root
 mvn clean package -DskipTests
 
 # 2. 启动服务（使用纯Java配置）
-java -jar target/bailing-java.jar config/config-java-only.yaml
+java -jar target/skylark.jar config/config-java-only.yaml
 ```
 
 ### Docker部署
@@ -107,7 +107,7 @@ docker-compose up -d
 
 所有服务均使用纯 Java 实现，无需 Python 依赖。
 
-详见: [开发指南](java-service/JAVA_SERVICES_README.md)
+详见: [开发指南](./JAVA_SERVICES_README.md)
 
 ## 📁 项目结构 (Project Structure)
 
@@ -117,8 +117,8 @@ docker-compose up -d
 
 ```
 skylark/
-├── java-service/                        # Java服务
-│   ├── src/main/java/com/bailing/
+├── ./                        # Java服务
+│   ├── src/main/java/org/skylark/
 │   │   ├── api/                        # API接口层
 │   │   │   └── controller/             # REST控制器
 │   │   ├── application/                # 应用层

@@ -70,7 +70,7 @@ Java实现提供了与Python服务完全兼容的REST API接口：
 #### 选项1: 纯Java模式 ⭐ 新功能
 
 ```bash
-java -jar java-service/target/bailing-java.jar config/config-java-only.yaml
+java -jar ./target/skylark.jar config/config-java-only.yaml
 ```
 
 **优势**:
@@ -96,15 +96,15 @@ docker-compose up -d
 ### 新增文件 (New Files Created)
 
 **Java源代码 (6个文件)**:
-1. `java-service/src/main/java/com/bailing/controller/ASRController.java`
-2. `java-service/src/main/java/com/bailing/controller/TTSController.java`
-3. `java-service/src/main/java/com/bailing/controller/VADController.java`
-4. `java-service/src/main/java/com/bailing/service/ASRService.java`
-5. `java-service/src/main/java/com/bailing/service/TTSService.java`
-6. `java-service/src/main/java/com/bailing/service/VADService.java`
+1. `./src/main/java/org/skylark/controller/ASRController.java`
+2. `./src/main/java/org/skylark/controller/TTSController.java`
+3. `./src/main/java/org/skylark/controller/VADController.java`
+4. `./src/main/java/org/skylark/service/ASRService.java`
+5. `./src/main/java/org/skylark/service/TTSService.java`
+6. `./src/main/java/org/skylark/service/VADService.java`
 
 **文档 (3个文件)**:
-7. `java-service/JAVA_SERVICES_README.md` - API文档和开发指南
+7. `./JAVA_SERVICES_README.md` - API文档和开发指南
 8. `DEPLOYMENT_GUIDE.md` - 完整部署指南
 9. `PROJECT_SUMMARY.md` - 本文件
 
@@ -146,9 +146,9 @@ docker-compose up -d
 ### 启动服务 (Start Service)
 
 ```bash
-cd java-service
+cd root
 mvn clean package -DskipTests
-java -jar target/bailing-java.jar ../config/config-java-only.yaml
+java -jar target/skylark.jar ../config/config-java-only.yaml
 ```
 
 ### 测试端点 (Test Endpoints)

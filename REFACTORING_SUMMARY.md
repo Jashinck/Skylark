@@ -17,7 +17,7 @@
 #### 重构前 (Before)
 
 ```
-com.bailing/
+org.skylark/
 ├── asr/          # ASR相关（混合接口和实现）
 ├── tts/          # TTS相关（混合接口和实现）
 ├── vad/          # VAD相关（混合接口和实现）
@@ -38,7 +38,7 @@ com.bailing/
 #### 重构后 (After)
 
 ```
-com.bailing/
+org.skylark/
 ├── api/                      # API接口层
 │   └── controller/           # REST控制器（预留）
 ├── application/              # 应用层
@@ -72,14 +72,14 @@ com.bailing/
 
 | 原包名 | 新包名 | 说明 |
 |--------|--------|------|
-| `com.bailing.asr` | `com.bailing.infrastructure.adapter` | ASR适配器接口和实现 |
-| `com.bailing.tts` | `com.bailing.infrastructure.adapter` | TTS适配器接口和实现 |
-| `com.bailing.vad` | `com.bailing.infrastructure.adapter` | VAD适配器接口和实现 |
-| `com.bailing.llm` | `com.bailing.infrastructure.adapter` | LLM适配器接口和实现 |
-| `com.bailing.service` | `com.bailing.application.service` | 应用服务层 |
-| `com.bailing.core` | `com.bailing.domain.model` | 领域模型 |
-| `com.bailing.config` | `com.bailing.infrastructure.config` | 基础设施配置 |
-| `com.bailing.utils` | `com.bailing.common.util` | 通用工具类 |
+| `org.skylark.asr` | `org.skylark.infrastructure.adapter` | ASR适配器接口和实现 |
+| `org.skylark.tts` | `org.skylark.infrastructure.adapter` | TTS适配器接口和实现 |
+| `org.skylark.vad` | `org.skylark.infrastructure.adapter` | VAD适配器接口和实现 |
+| `org.skylark.llm` | `org.skylark.infrastructure.adapter` | LLM适配器接口和实现 |
+| `org.skylark.service` | `org.skylark.application.service` | 应用服务层 |
+| `org.skylark.core` | `org.skylark.domain.model` | 领域模型 |
+| `org.skylark.config` | `org.skylark.infrastructure.config` | 基础设施配置 |
+| `org.skylark.utils` | `org.skylark.common.util` | 通用工具类 |
 
 ### 2. 文件移动
 
@@ -147,14 +147,14 @@ com.bailing/
 
 ```java
 // 旧的import
-import com.bailing.asr.*;
-import com.bailing.service.*;
-import com.bailing.utils.*;
+import org.skylark.asr.*;
+import org.skylark.service.*;
+import org.skylark.utils.*;
 
 // 新的import
-import com.bailing.infrastructure.adapter.*;
-import com.bailing.application.service.*;
-import com.bailing.common.util.*;
+import org.skylark.infrastructure.adapter.*;
+import org.skylark.application.service.*;
+import org.skylark.common.util.*;
 ```
 
 ---
@@ -224,7 +224,7 @@ import com.bailing.common.util.*;
 
 ✅ mvn package -DskipTests
    [INFO] BUILD SUCCESS
-   [INFO] Building jar: bailing-java.jar (133 MB)
+   [INFO] Building jar: skylark.jar (133 MB)
 ```
 
 ### 包结构验证
