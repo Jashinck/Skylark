@@ -29,28 +29,30 @@ This module provides Java implementations of the Python services to support a pu
 
 ### 与HTTP Adapter的区别
 
-本项目同时支持两种集成模式：
+本项目的架构设计支持两种集成模式：
 
-1. **Direct Adapter模式**（推荐）:
+1. **Direct Adapter模式**（✅ 已实现，推荐）:
    - 直接在进程内调用服务
    - 零网络延迟
    - 更好的性能和资源利用
    - 适合单体应用架构
+   - **当前默认使用此模式**
 
-2. **HTTP Adapter模式**（可选）:
+2. **HTTP Adapter模式**（⚠️ 未实现，需要开发）:
    - 通过HTTP请求调用远程服务
    - 支持分布式部署
    - 服务可独立扩展
    - 需要配置外部服务URL
+   - **需要自行开发REST API服务器**
 
 在`config/config.yaml`中可以选择使用哪种模式：
 
 ```yaml
-# Direct Adapter模式
+# Direct Adapter模式（当前实现）
 asr:
   adapter: DirectASRAdapter
 
-# HTTP Adapter模式  
+# HTTP Adapter模式（需要开发REST服务）
 asr:
   adapter: HttpASRAdapter
   service_url: http://localhost:8080/asr/recognize
@@ -125,6 +127,8 @@ All services are implemented in pure Java with no Python dependencies and no RES
 
 在`config/config.yaml`中配置服务参数和适配器选择:
 
+**Direct Adapter模式配置（推荐，当前实现）**:
+
 ```yaml
 # ASR Configuration
 asr:
@@ -157,9 +161,10 @@ vad:
         ms: 500
 ```
 
-或使用HTTP Adapter模式（需要独立的REST服务）:
+**HTTP Adapter模式配置（需要自行开发REST服务）**:
 
 ```yaml
+# ⚠️ 注意：HTTP Adapter需要独立的REST API服务器，当前未实现
 asr:
   adapter: HttpASRAdapter
   service_url: http://localhost:8080/asr/recognize
@@ -221,27 +226,34 @@ mvn clean package
 java -jar target/bailing-java.jar config/config.yaml
 ```
 
-### 方式2: HTTP Adapter模式（分布式部署）
+### 方式2: HTTP Adapter模式（未实现，需要开发）
 
-如果需要将服务部署为独立的微服务，可以使用HTTP Adapter模式。
+**⚠️ 重要提示**: HTTP Adapter模式当前**未实现**。当前代码库仅包含Direct Adapter实现，没有REST API端点。
 
-**注意**: 当前代码库中没有REST API端点实现。如需使用HTTP Adapter模式，需要：
-1. 开发独立的REST API服务（可使用Python服务或开发新的Java REST服务）
-2. 在`config/config.yaml`中配置HTTP Adapter和服务URL
+如果您需要分布式微服务架构，需要进行以下开发工作：
 
-```yaml
-asr:
-  adapter: HttpASRAdapter
-  service_url: http://localhost:8080/asr/recognize
+1. **开发REST API服务器**:
+   - 选项A: 使用现有的Python服务（如果有）
+   - 选项B: 在Java项目中添加REST Controller（`@RestController`）来暴露服务端点
+   - 开发端点如 `/asr/recognize`, `/tts`, `/vad` 等
 
-tts:
-  adapter: HttpTTSAdapter
-  service_url: http://localhost:8080/tts
+2. **配置HTTP Adapter**:
+   在`config/config.yaml`中配置HTTP Adapter和服务URL:
+   ```yaml
+   asr:
+     adapter: HttpASRAdapter
+     service_url: http://localhost:8080/asr/recognize
+   
+   tts:
+     adapter: HttpTTSAdapter
+     service_url: http://localhost:8080/tts
+   
+   vad:
+     adapter: HttpVADAdapter
+     service_url: http://localhost:8080/vad
+   ```
 
-vad:
-  adapter: HttpVADAdapter
-  service_url: http://localhost:8080/vad
-```
+**推荐**: 除非您有明确的分布式部署需求，否则建议使用Direct Adapter模式，它更简单、性能更好。
 
 ## 开发指南 (Development Guide)
 
@@ -635,7 +647,7 @@ tail -f logs/application.log
 
 如需测试服务功能，可以编写单元测试或使用应用程序的主要功能（语音对话）。
 
-**注意**: Direct Adapter模式不提供REST API端点，因此无法使用curl直接测试。如需HTTP接口，请参考"HTTP Adapter模式"部分。
+**注意**: Direct Adapter模式不提供REST API端点，因此无法使用curl直接测试。如需HTTP接口，需要自行开发REST API服务（参见"方式2: HTTP Adapter模式"部分）。
 
 ### 故障排除
 
