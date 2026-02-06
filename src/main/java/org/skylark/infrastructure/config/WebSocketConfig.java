@@ -28,7 +28,9 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         // WebRTC signaling endpoint
+        // TODO: In production, restrict CORS to specific origins for security
+        // Consider making this configurable via application.properties
         registry.addHandler(webRTCSignalingHandler, "/ws/webrtc")
-                .setAllowedOrigins("*");
+                .setAllowedOrigins("*");  // WARNING: This allows all origins - configure for production!
     }
 }

@@ -382,7 +382,11 @@
             }
 
             connectWebSocket() {
-                const wsUrl = 'ws://localhost:8080/ws/webrtc';
+                // Construct WebSocket URL dynamically based on current page location
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const host = window.location.host || 'localhost:8080';
+                const wsUrl = `${protocol}//${host}/ws/webrtc`;
+                
                 this.addSystemMessage('正在连接WebRTC服务器...');
 
                 try {
@@ -474,6 +478,8 @@
                     const source = this.audioContext.createMediaStreamSource(this.mediaStream);
                     
                     // Create processor for audio data
+                    // TODO: Migrate to AudioWorkletNode for better performance
+                    // createScriptProcessor is deprecated but provides broader browser support
                     this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
 
                     this.processor.onaudioprocess = (e) => {
