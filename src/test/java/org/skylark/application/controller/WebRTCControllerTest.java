@@ -101,7 +101,7 @@ class WebRTCControllerTest {
         assertNotNull(body);
         assertEquals(sessionId, body.getSessionId());
         assertEquals("stopped", body.getStatus());
-        assertEquals(false, body.getActive());
+        assertFalse(body.getActive());
         assertEquals("WebRTC session stopped successfully", body.getMessage());
         
         // Verify orchestration service cleanup was called
@@ -124,7 +124,7 @@ class WebRTCControllerTest {
         assertNotNull(body);
         assertEquals(nonExistentSessionId, body.getSessionId());
         assertEquals("not_found", body.getStatus());
-        assertEquals(false, body.getActive());
+        assertFalse(body.getActive());
         assertEquals("Session not found", body.getMessage());
         
         // Verify orchestration service cleanup was not called
@@ -152,7 +152,7 @@ class WebRTCControllerTest {
         assertNotNull(body);
         assertEquals(sessionId, body.getSessionId());
         assertEquals("active", body.getStatus());
-        assertEquals(true, body.getActive());
+        assertTrue(body.getActive());
         assertEquals("Session is active", body.getMessage());
     }
 
@@ -172,7 +172,7 @@ class WebRTCControllerTest {
         assertNotNull(body);
         assertEquals(nonExistentSessionId, body.getSessionId());
         assertEquals("not_found", body.getStatus());
-        assertEquals(false, body.getActive());
+        assertFalse(body.getActive());
         assertEquals("Session not found", body.getMessage());
     }
 
@@ -193,7 +193,7 @@ class WebRTCControllerTest {
         ResponseEntity<SessionStatusResponse> statusResponse = controller.getSessionStatus(sessionId);
         assertEquals(HttpStatus.OK, statusResponse.getStatusCode());
         assertEquals("active", statusResponse.getBody().getStatus());
-        assertEquals(true, statusResponse.getBody().getActive());
+        assertTrue(statusResponse.getBody().getActive());
 
         // 3. Stop session
         ResponseEntity<SessionStatusResponse> stopResponse = controller.stopSession(sessionId);
