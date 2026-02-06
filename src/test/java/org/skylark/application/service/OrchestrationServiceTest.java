@@ -1,0 +1,164 @@
+package org.skylark.application.service;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.skylark.infrastructure.adapter.LLM;
+
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+/**
+ * Unit tests for OrchestrationService
+ */
+@ExtendWith(MockitoExtension.class)
+class OrchestrationServiceTest {
+
+    @Mock
+    private VADService vadService;
+
+    @Mock
+    private ASRService asrService;
+
+    @Mock
+    private TTSService ttsService;
+
+    @Mock
+    private LLM llmAdapter;
+
+    private OrchestrationService orchestrationService;
+
+    @BeforeEach
+    void setUp() {
+        orchestrationService = new OrchestrationService(vadService, asrService, ttsService, llmAdapter);
+    }
+
+    @Test
+    void testProcessTextInput_Success() throws Exception {
+        // Arrange
+        String sessionId = "test-session-1";
+        String text = "Hello";
+        String llmResponse = "Hi there!";
+        byte[] ttsAudio = new byte[]{1, 2, 3, 4};
+        
+        // Mock LLM response
+        doAnswer(invocation -> {
+            List<Map<String, String>> messages = invocation.getArgument(0);
+            java.util.function.Consumer<String> onChunk = invocation.getArgument(1);
+            Runnable onComplete = invocation.getArgument(2);
+            
+            onChunk.accept(llmResponse);
+            onComplete.run();
+            return null;
+        }).when(llmAdapter).chat(anyList(), any(), any());
+        
+        // Mock TTS
+        when(ttsService.synthesize(eq(llmResponse), isNull())).thenReturn(createTempFile(ttsAudio));
+        
+        List<Map<String, Object>> responses = new ArrayList<>();
+        OrchestrationService.ResponseCallback callback = (sid, type, data) -> {
+            Map<String, Object> response = new HashMap<>();
+            response.put("sessionId", sid);
+            response.put("type", type);
+            response.put("data", data);
+            responses.add(response);
+        };
+
+        // Act
+        orchestrationService.processTextInput(sessionId, text, callback);
+
+        // Assert
+        assertEquals(3, responses.size());
+        
+        // Check ASR result response
+        assertEquals("asr_result", responses.get(0).get("type"));
+        Map<String, Object> asrData = (Map<String, Object>) responses.get(0).get("data");
+        assertEquals(text, asrData.get("text"));
+        
+        // Check LLM response
+        assertEquals("llm_response", responses.get(1).get("type"));
+        Map<String, Object> llmData = (Map<String, Object>) responses.get(1).get("data");
+        assertEquals(llmResponse, llmData.get("text"));
+        
+        // Check TTS audio
+        assertEquals("tts_audio", responses.get(2).get("type"));
+        Map<String, Object> ttsData = (Map<String, Object>) responses.get(2).get("data");
+        assertNotNull(ttsData.get("audio"));
+    }
+
+    @Test
+    void testProcessAudioStream_DetectsVoiceActivity() throws Exception {
+        // Arrange
+        String sessionId = "test-session-2";
+        byte[] audioData = new byte[1024];
+        
+        Map<String, Object> vadResult = new HashMap<>();
+        vadResult.put("isSpeaking", true);
+        when(vadService.detect(anyString(), eq(sessionId))).thenReturn(vadResult);
+        
+        List<Map<String, Object>> responses = new ArrayList<>();
+        OrchestrationService.ResponseCallback callback = (sid, type, data) -> {
+            Map<String, Object> response = new HashMap<>();
+            response.put("type", type);
+            responses.add(response);
+        };
+
+        // Act
+        orchestrationService.processAudioStream(sessionId, audioData, callback);
+
+        // Assert
+        verify(vadService, times(1)).detect(anyString(), eq(sessionId));
+        // Should not process speech yet as it's still speaking
+        assertEquals(0, responses.size());
+    }
+
+    @Test
+    void testCleanupSession() {
+        // Arrange
+        String sessionId = "test-session-3";
+
+        // Act
+        orchestrationService.cleanupSession(sessionId);
+
+        // Assert
+        // Should not throw any exceptions
+        assertDoesNotThrow(() -> orchestrationService.cleanupSession(sessionId));
+    }
+
+    @Test
+    void testProcessTextInput_WithLLMError() throws Exception {
+        // Arrange
+        String sessionId = "test-session-4";
+        String text = "Hello";
+        
+        doThrow(new RuntimeException("LLM error")).when(llmAdapter).chat(anyList(), any(), any());
+        
+        List<Map<String, Object>> responses = new ArrayList<>();
+        OrchestrationService.ResponseCallback callback = (sid, type, data) -> {
+            Map<String, Object> response = new HashMap<>();
+            response.put("type", type);
+            response.put("data", data);
+            responses.add(response);
+        };
+
+        // Act
+        orchestrationService.processTextInput(sessionId, text, callback);
+
+        // Assert
+        assertTrue(responses.stream().anyMatch(r -> "error".equals(r.get("type"))));
+    }
+
+    private java.io.File createTempFile(byte[] data) throws Exception {
+        java.io.File tempFile = java.io.File.createTempFile("test-audio", ".wav");
+        tempFile.deleteOnExit();
+        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile)) {
+            fos.write(data);
+        }
+        return tempFile;
+    }
+}

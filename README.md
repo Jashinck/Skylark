@@ -26,6 +26,7 @@
 🚀 **轻量部署** - 单一JAR包，一键启动  
 🔧 **灵活配置** - 支持纯Java或混合模式部署  
 🌐 **云原生友好** - 适配容器化和微服务架构  
+🎙️ **WebRTC集成** - 实时语音通信，VAD→ASR→LLM→TTS完整编排  
 
 ---
 
@@ -108,6 +109,33 @@ docker-compose up -d
 所有服务均使用纯 Java 实现，无需 Python 依赖。
 
 详见: [开发指南](./JAVA_SERVICES_README.md)
+
+## 🎙️ WebRTC 实时语音交互 (WebRTC Real-time Voice Interaction)
+
+云雀现已集成 WebRTC 实时语音通信能力，支持完整的 VAD→ASR→LLM→TTS 编排流程。
+
+Skylark now integrates WebRTC real-time voice communication with complete VAD→ASR→LLM→TTS orchestration.
+
+### 快速开始 (Quick Start)
+
+```bash
+# 启动服务
+java -jar target/skylark.jar
+
+# 访问 WebRTC 界面
+http://localhost:8080/webrtc.html
+```
+
+### 功能特性 (Features)
+
+✅ **实时语音通信** - 基于 WebSocket 的音频流传输  
+✅ **VAD 语音检测** - 自动识别语音活动并分段  
+✅ **ASR 语音识别** - Vosk 离线语音识别  
+✅ **LLM 智能对话** - 支持多种 LLM 后端  
+✅ **TTS 语音合成** - 文本转语音输出  
+✅ **完整测试覆盖** - 单元测试和集成测试
+
+详细文档: [WebRTC 集成指南](./WEBRTC_GUIDE.md)
 
 ## 📁 项目结构 (Project Structure)
 
