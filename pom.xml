@@ -89,39 +89,6 @@
             <version>1.16.3</version>
         </dependency>
 
-        <!-- Note: MaryTTS has dependency resolution issues in Maven Central.
-             To use MaryTTS, download the standalone JAR with dependencies from:
-             https://github.com/marytts/marytts/releases/download/v5.2.1/marytts-builder-5.2.1.zip
-             and add it as a system dependency or to your local Maven repository.
-             
-             For now, TTS service uses a fallback implementation that generates
-             placeholder WAV files. -->
-
-        <!-- MaryTTS for TTS (Text-to-Speech) - Optional -->
-        <!-- Note: MaryTTS has complex dependencies. Making it optional. -->
-        <!-- For production use, consider cloud-based TTS services (Google, Azure, AWS) -->
-        <!--
-        <dependency>
-            <groupId>de.dfki.mary</groupId>
-            <artifactId>marytts-runtime</artifactId>
-            <version>5.2.1</version>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>de.dfki.mary</groupId>
-            <artifactId>voice-cmu-slt-hsmm</artifactId>
-            <version>5.2.1</version>
-            <optional>true</optional>
-        </dependency>
-        -->
-
-        <!-- ONNX Runtime for VAD (Voice Activity Detection with Silero VAD) -->
-        <dependency>
-            <groupId>com.microsoft.onnxruntime</groupId>
-            <artifactId>onnxruntime</artifactId>
-            <version>1.16.0</version>
-        </dependency>
-
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
