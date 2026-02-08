@@ -18,20 +18,20 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for WebRTCController
+ * Unit tests for RobotController
  */
 @ExtendWith(MockitoExtension.class)
-class WebRTCControllerTest {
+class RobotControllerTest {
 
     @Mock
     private OrchestrationService orchestrationService;
 
-    private WebRTCController controller;
+    private RobotController controller;
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        controller = new WebRTCController(orchestrationService);
+        controller = new RobotController(orchestrationService);
         objectMapper = new ObjectMapper();
     }
 

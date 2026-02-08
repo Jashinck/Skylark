@@ -15,8 +15,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * WebRTC Controller
- * WebRTC控制器
+ * Robot Controller
+ * 机器人控制器
  * 
  * <p>Provides REST API endpoints for managing WebRTC sessions, including starting
  * and stopping real-time call capabilities.</p>
@@ -26,16 +26,16 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @RestController
 @RequestMapping("/api/webrtc")
-public class WebRTCController {
+public class RobotController {
 
-    private static final Logger logger = LoggerFactory.getLogger(WebRTCController.class);
+    private static final Logger logger = LoggerFactory.getLogger(RobotController.class);
     
     private final OrchestrationService orchestrationService;
     
     // Track active sessions managed via REST API
     private final Map<String, SessionInfo> activeSessions = new ConcurrentHashMap<>();
     
-    public WebRTCController(OrchestrationService orchestrationService) {
+    public RobotController(OrchestrationService orchestrationService) {
         this.orchestrationService = orchestrationService;
     }
 
