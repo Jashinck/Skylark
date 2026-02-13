@@ -9,10 +9,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.skylark.infrastructure.config.WebRTCProperties;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Kurento Client Adapter Implementation
@@ -28,11 +30,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public class KurentoClientAdapterImpl implements KurentoClientAdapter {
     
     private static final Logger logger = LoggerFactory.getLogger(KurentoClientAdapterImpl.class);
+    private static final int MAX_RECONNECT_DELAY_MS = 60000; // 60 seconds
+    private static final int INITIAL_RECONNECT_DELAY_MS = 1000; // 1 second
     
     private final WebRTCProperties webRTCProperties;
     
     private KurentoClient kurentoClient;
     private final Map<String, MediaPipeline> pipelines = new ConcurrentHashMap<>();
+    private volatile boolean connected = false;
+    private int reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
+    private long lastReconnectAttempt = 0;
     
     @Autowired
     public KurentoClientAdapterImpl(WebRTCProperties webRTCProperties) {
@@ -45,15 +52,99 @@ public class KurentoClientAdapterImpl implements KurentoClientAdapter {
      */
     @PostConstruct
     public void init() {
+        connectToKurento();
+    }
+    
+    /**
+     * Connects to Kurento Media Server
+     * 连接到 Kurento 媒体服务器
+     */
+    private void connectToKurento() {
         try {
             String kurentoWsUri = webRTCProperties.getKurento().getWsUri();
-            logger.info("Initializing Kurento Client, connecting to: {}", kurentoWsUri);
+            logger.info("Connecting to Kurento Media Server: {}", kurentoWsUri);
             kurentoClient = KurentoClient.create(kurentoWsUri);
-            logger.info("✅ Kurento Client initialized successfully");
+            connected = true;
+            reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS; // Reset reconnect delay on success
+            logger.info("✅ Kurento Client connected successfully");
         } catch (Exception e) {
-            logger.error("Failed to initialize Kurento Client. Make sure Kurento Media Server is running at: {}", 
+            logger.error("Failed to connect to Kurento Media Server at: {}", 
                 webRTCProperties.getKurento().getWsUri(), e);
-            logger.warn("Kurento WebRTC features will not be available");
+            logger.warn("Kurento WebRTC features will not be available. Will retry automatically.");
+            connected = false;
+            kurentoClient = null;
+        }
+    }
+    
+    /**
+     * Health check scheduled task - runs every 30 seconds
+     * 健康检查定时任务 - 每 30 秒执行一次
+     */
+    @Scheduled(fixedDelay = 30000, initialDelay = 30000)
+    public void healthCheck() {
+        if (kurentoClient != null) {
+            try {
+                // Try to get server info to check if connection is alive
+                kurentoClient.getServerManager().getInfo();
+                
+                if (!connected) {
+                    logger.info("✅ Kurento connection restored");
+                    connected = true;
+                    reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
+                }
+                
+            } catch (Exception e) {
+                logger.warn("Kurento health check failed: {}", e.getMessage());
+                connected = false;
+                attemptReconnect();
+            }
+        } else {
+            // Client is null, attempt to reconnect
+            if (!connected) {
+                attemptReconnect();
+            }
+        }
+    }
+    
+    /**
+     * Attempts to reconnect to Kurento with exponential backoff
+     * 尝试使用指数退避重连到 Kurento
+     */
+    private void attemptReconnect() {
+        long now = System.currentTimeMillis();
+        
+        // Check if enough time has passed since last reconnect attempt
+        if (now - lastReconnectAttempt < reconnectDelayMs) {
+            return;
+        }
+        
+        lastReconnectAttempt = now;
+        logger.info("Attempting to reconnect to Kurento (delay: {}ms)...", reconnectDelayMs);
+        
+        try {
+            // Clean up old client if it exists
+            if (kurentoClient != null) {
+                try {
+                    kurentoClient.destroy();
+                } catch (Exception e) {
+                    logger.debug("Error destroying old Kurento client", e);
+                }
+            }
+            
+            // Attempt new connection
+            connectToKurento();
+            
+            if (connected) {
+                logger.info("✅ Reconnected to Kurento successfully");
+            } else {
+                // Increase delay for next attempt (exponential backoff)
+                reconnectDelayMs = Math.min(reconnectDelayMs * 2, MAX_RECONNECT_DELAY_MS);
+            }
+            
+        } catch (Exception e) {
+            logger.error("Reconnect attempt failed: {}", e.getMessage());
+            // Increase delay for next attempt
+            reconnectDelayMs = Math.min(reconnectDelayMs * 2, MAX_RECONNECT_DELAY_MS);
         }
     }
     
@@ -63,6 +154,7 @@ public class KurentoClientAdapterImpl implements KurentoClientAdapter {
      */
     @PreDestroy
     public void destroy() {
+        connected = false;
         if (kurentoClient != null) {
             try {
                 // Release all pipelines
@@ -157,6 +249,6 @@ public class KurentoClientAdapterImpl implements KurentoClientAdapter {
     
     @Override
     public boolean isConnected() {
-        return kurentoClient != null;
+        return connected && kurentoClient != null;
     }
 }

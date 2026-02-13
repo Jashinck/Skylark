@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Skylark Voice Assistant - Main Application Entry Point
@@ -18,6 +19,7 @@ import org.springframework.context.ConfigurableApplicationContext;
  * @version 1.0.0
  */
 @SpringBootApplication
+@EnableScheduling
 public class SkylarkApplication {
     
     private static final Logger logger = LoggerFactory.getLogger(SkylarkApplication.class);

@@ -159,6 +159,9 @@ class KurentoClientAdapterImplTest {
     
     @Test
     void testIsConnected_KurentoClientNotNull_ReturnsTrue() {
+        // Arrange - also set connected field
+        ReflectionTestUtils.setField(adapter, "connected", true);
+        
         // Act & Assert
         assertTrue(adapter.isConnected());
     }
@@ -167,6 +170,7 @@ class KurentoClientAdapterImplTest {
     void testIsConnected_KurentoClientNull_ReturnsFalse() {
         // Arrange
         ReflectionTestUtils.setField(adapter, "kurentoClient", null);
+        ReflectionTestUtils.setField(adapter, "connected", false);
         
         // Act & Assert
         assertFalse(adapter.isConnected());
