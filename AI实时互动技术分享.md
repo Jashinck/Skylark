@@ -414,18 +414,102 @@ Vosk支持流式识别，带来的优势：
 
 云雀是一个完全开源的项目，采用 **Apache License 2.0** 协议。
 
-### 项目地址
+### 📍 项目信息
+- **项目名称**: 云雀 (Skylark) - 智能语音交互代理系统
+- **开源协议**: Apache License 2.0
 - **GitHub**: https://github.com/Jashinck/Skylark
-- **文档**: 详见仓库README和ARCHITECTURE.md
-- **示例**: 提供完整的使用示例和最佳实践
+- **技术栈**: Java 17 + Spring Boot 3.2.0 + Vosk + MaryTTS + Silero VAD + Kurento
+- **核心能力**: VAD + ASR + LLM + TTS + WebRTC 完整编排
+- **文档**: 详见仓库README.md、ARCHITECTURE.md、WEBRTC_GUIDE.md、KURENTO_INTEGRATION.md
 
-### 如何参与
-1. ⭐ **Star项目** - 关注项目进展
-2. 🐛 **提Issue** - 报告bug或提出建议
-3. 🔧 **提PR** - 贡献代码和文档
-4. 💬 **讨论交流** - 分享使用经验
+### 🌟 为什么要参与云雀开源项目？
 
-我们欢迎各种形式的贡献，无论是代码、文档、测试还是推广！
+#### 对个人的价值
+- 💡 **技术成长**: 深入理解AI语音交互、WebRTC实时通信、企业级DDD架构
+- 📚 **经验积累**: 参与真实的企业级项目，积累宝贵的开源协作经验
+- 🎯 **职业发展**: 开源贡献可以成为简历上的亮点，提升职业竞争力
+- 🤝 **技术交流**: 结识志同道合的技术伙伴，拓展人脉圈子
+- 🏆 **成就感**: 你的代码将被全球开发者使用，创造真实价值
+
+#### 对技术社区的意义
+- 🌍 **推动创新**: 共同推进AI语音交互技术的发展
+- 🔓 **知识共享**: 让更多人能够接触和学习先进的技术实践
+- 🚀 **降低门槛**: 让中小企业和个人开发者也能构建专业的语音交互系统
+- 💪 **技术自主**: 提供纯Java生态的解决方案，增强技术自主可控能力
+
+### 🎯 如何参与开源共建？
+
+无论你是经验丰富的开发者，还是刚入门的新手，都能为云雀项目做出贡献！
+
+#### 1️⃣ ⭐ 给项目一个Star
+- **最简单的支持方式**，让更多人看到这个项目
+- Star数是项目影响力的重要指标
+- 👉 [立即Star](https://github.com/Jashinck/Skylark)
+
+#### 2️⃣ 📢 分享与推广
+- 在技术社区、公众号、博客上分享你的使用体验
+- 向身边的朋友和同事推荐云雀项目
+- 在技术讨论中提及云雀作为解决方案
+
+#### 3️⃣ 🐛 报告问题和建议
+- 使用过程中遇到bug？请提Issue告诉我们
+- 有功能建议或改进想法？我们非常期待听到你的声音
+- 👉 [提交Issue](https://github.com/Jashinck/Skylark/issues)
+
+#### 4️⃣ 📝 完善文档
+- 改进README、教程、API文档
+- 编写使用示例和最佳实践
+- 翻译文档，让项目走向国际化
+- 文档贡献同样重要！
+
+#### 5️⃣ 🔧 贡献代码
+- 修复bug、优化性能、新增功能
+- 完善测试用例，提高代码质量
+- 适配新的ASR/TTS/LLM服务提供商
+- 实现RTC-PAAS厂商适配（声网、腾讯云、阿里云等）
+- 👉 [提交Pull Request](https://github.com/Jashinck/Skylark/pulls)
+
+#### 6️⃣ 💬 参与讨论
+- 在GitHub Discussions中参与技术讨论
+- 回答其他用户的问题
+- 分享你的使用经验和技巧
+- 👉 [加入讨论](https://github.com/Jashinck/Skylark/discussions)
+
+### 🎁 贡献者福利
+
+所有为云雀项目做出贡献的开发者，都将获得：
+- ✅ **贡献者列表**: 你的名字将出现在项目的贡献者列表中
+- ✅ **技术认可**: 你的PR和Issue将被记录和认可
+- ✅ **学习机会**: 在代码Review过程中，与优秀开发者交流学习
+- ✅ **优先支持**: 贡献者在使用项目时将获得优先级支持
+- ✅ **项目影响力**: 参与项目的重要决策和技术选型讨论
+
+### 📮 联系我们
+
+我们期待与你交流！
+
+- **GitHub项目**: https://github.com/Jashinck/Skylark
+- **提交Issue**: https://github.com/Jashinck/Skylark/issues
+- **Pull Request**: https://github.com/Jashinck/Skylark/pulls
+- **技术讨论**: https://github.com/Jashinck/Skylark/discussions
+
+---
+
+## 📣 加入我们，共建开源生态！
+
+云雀项目的成功离不开每一位开发者的参与和贡献。无论你是：
+- 🎓 **在校学生** - 通过开源项目提升实战能力
+- 💼 **职场人士** - 在工作之余贡献自己的力量
+- 🏢 **企业开发者** - 将企业最佳实践回馈社区
+- 🌟 **技术爱好者** - 纯粹热爱技术，享受编程乐趣
+
+我们都欢迎你的加入！
+
+**一起让AI语音交互技术普惠每一个人！** 🚀
+
+👉 **现在就访问**: https://github.com/Jashinck/Skylark  
+👉 **立即Star**: https://github.com/Jashinck/Skylark/stargazers  
+👉 **参与贡献**: https://github.com/Jashinck/Skylark/contribute
 
 ---
 
@@ -435,23 +519,26 @@ AI实时互动技术正在改变我们与机器交互的方式。云雀(Skylark)
 
 从VAD到ASR，从TTS到LLM，我们已经构建了完整的技术栈。接下来，通过适配主流RTC-PAAS厂商，云雀将支持更大规模、更复杂的实时音视频交互场景。
 
-**敬请期待！** 🎉
+### 🌟 开源的力量
+
+一个人可以走得很快，但一群人可以走得更远。云雀项目期待你的加入：
+
+- 如果你觉得这个项目有价值，请给我们一个⭐Star
+- 如果你在使用中遇到问题，请提Issue帮助我们改进
+- 如果你有好的想法，请参与讨论，共同设计未来
+- 如果你愿意贡献代码，我们将热烈欢迎你的Pull Request
+
+**让我们一起，用开源的力量，让AI语音交互触手可及！** 🚀
+
+**项目地址**: https://github.com/Jashinck/Skylark
 
 ---
-
-## 📮 联系方式
-
-如果你对云雀项目感兴趣，或者有任何问题和建议，欢迎通过以下方式联系我们：
-
-- **项目主页**: https://github.com/Jashinck/Skylark
-- **提Issue**: https://github.com/Jashinck/Skylark/issues
-- **讨论区**: GitHub Discussions
 
 ---
 
 ## 🏷️ 标签
 
-`#AI` `#语音识别` `#语音合成` `#实时互动` `#开源项目` `#Java` `#SpringBoot` `#VAD` `#ASR` `#TTS` `#LLM` `#RTC` `#Vosk` `#云原生` `#微服务` `#DDD` `#企业架构`
+`#AI` `#语音识别` `#语音合成` `#实时互动` `#开源项目` `#Java` `#SpringBoot` `#VAD` `#ASR` `#TTS` `#LLM` `#RTC` `#Vosk` `#云原生` `#微服务` `#DDD` `#企业架构` `#WebRTC` `#Kurento`
 
 ---
 
@@ -464,9 +551,25 @@ AI实时互动技术正在改变我们与机器交互的方式。云雀(Skylark)
 *让智能语音交互触手可及*
 
 [![Star on GitHub](https://img.shields.io/github/stars/Jashinck/Skylark?style=social)](https://github.com/Jashinck/Skylark)
+[![Fork on GitHub](https://img.shields.io/github/forks/Jashinck/Skylark?style=social)](https://github.com/Jashinck/Skylark)
+[![Watch on GitHub](https://img.shields.io/github/watchers/Jashinck/Skylark?style=social)](https://github.com/Jashinck/Skylark)
+
+**🌟 如果这篇文章对你有帮助，欢迎Star支持！**
+
+[⭐ Star项目](https://github.com/Jashinck/Skylark) · [📖 阅读文档](https://github.com/Jashinck/Skylark#readme) · [💬 参与讨论](https://github.com/Jashinck/Skylark/discussions) · [🐛 报告问题](https://github.com/Jashinck/Skylark/issues)
 
 </div>
 
 ---
 
-**原创技术分享 | 转载请注明出处**
+**原创技术分享 | 开源项目推广 | 转载请注明出处并附上项目链接**
+
+📍 **项目地址**: https://github.com/Jashinck/Skylark
+
+---
+
+> 💡 **温馨提示**: 
+> - 本文介绍的云雀(Skylark)项目完全开源免费，欢迎Star、Fork和贡献
+> - 项目持续更新中，欢迎关注项目动态
+> - 如有任何问题或建议，欢迎在GitHub上提Issue或参与讨论
+> - 期待与你一起，共建开源生态，让AI技术惠及更多人！
