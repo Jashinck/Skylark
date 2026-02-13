@@ -3,6 +3,7 @@
  * Kurento WebRTC 客户端
  * 
  * Implements WebRTC 1v1 real-time voice communication using Kurento Media Server
+ * with automatic reconnection support
  * 
  * @author Skylark Team
  * @version 1.0.0
@@ -14,6 +15,14 @@ class KurentoWebRTCClient {
         this.apiBaseUrl = this.getApiBaseUrl();
         this.statusCallback = null;
         this.messageCallback = null;
+        
+        // Retry configuration
+        this.maxRetries = 3;
+        this.retryDelay = 2000; // 2 seconds initial delay
+        this.retryBackoffMultiplier = 1.5;
+        this.retryCount = 0;
+        this.isReconnecting = false;
+        this.connectionStateCallback = null;
     }
     
     /**
@@ -40,12 +49,29 @@ class KurentoWebRTCClient {
     }
     
     /**
+     * Sets connection state change callback
+     */
+    setConnectionStateCallback(callback) {
+        this.connectionStateCallback = callback;
+    }
+    
+    /**
      * Updates status and calls callback if set
      */
     updateStatus(state, text) {
         console.log(`[KurentoWebRTC] Status: ${state} - ${text}`);
         if (this.statusCallback) {
             this.statusCallback(state, text);
+        }
+    }
+    
+    /**
+     * Notifies connection state change
+     */
+    notifyConnectionStateChange(state) {
+        console.log(`[KurentoWebRTC] Connection state: ${state}`);
+        if (this.connectionStateCallback) {
+            this.connectionStateCallback(state);
         }
     }
     
@@ -124,6 +150,9 @@ class KurentoWebRTCClient {
                     
                     console.log('[KurentoWebRTC] WebRTC peer created, generating offer...');
                     
+                    // Set up ICE connection state monitoring
+                    this.setupIceConnectionMonitoring();
+                    
                     // Generate SDP offer
                     this.webRtcPeer.generateOffer((error, offerSdp) => {
                         if (error) {
@@ -141,6 +170,134 @@ class KurentoWebRTCClient {
                     });
                 });
         });
+    }
+    
+    /**
+     * Sets up ICE connection state monitoring for reconnection
+     */
+    setupIceConnectionMonitoring() {
+        if (!this.webRtcPeer || !this.webRtcPeer.peerConnection) {
+            return;
+        }
+        
+        const pc = this.webRtcPeer.peerConnection;
+        
+        pc.oniceconnectionstatechange = () => {
+            const state = pc.iceConnectionState;
+            console.log('[KurentoWebRTC] ICE connection state changed:', state);
+            this.notifyConnectionStateChange(state);
+            
+            if (state === 'connected' || state === 'completed') {
+                // Connection successful, reset retry count
+                this.resetRetryCount();
+                this.updateStatus('connected', 'Kurento WebRTC 通话已建立');
+                
+            } else if (state === 'disconnected') {
+                console.warn('[KurentoWebRTC] Connection disconnected');
+                this.updateStatus('disconnected', '连接断开');
+                
+            } else if (state === 'failed') {
+                console.error('[KurentoWebRTC] Connection failed');
+                this.updateStatus('error', '连接失败');
+                this.handleConnectionFailure();
+            }
+        };
+    }
+    
+    /**
+     * Handles connection failure and triggers reconnection
+     */
+    async handleConnectionFailure() {
+        if (this.isReconnecting) {
+            console.log('[KurentoWebRTC] Already reconnecting, skipping...');
+            return;
+        }
+        
+        if (this.retryCount >= this.maxRetries) {
+            console.error('[KurentoWebRTC] Max retries reached, giving up');
+            this.updateStatus('error', `连接失败，已重试 ${this.maxRetries} 次`);
+            this.sendMessage('system', 'Kurento WebRTC 连接失败，请刷新页面重试');
+            return;
+        }
+        
+        this.retryCount++;
+        this.isReconnecting = true;
+        
+        const delay = this.retryDelay * Math.pow(this.retryBackoffMultiplier, this.retryCount - 1);
+        console.log(`[KurentoWebRTC] Attempting reconnection ${this.retryCount}/${this.maxRetries} in ${delay}ms...`);
+        this.updateStatus('reconnecting', `正在重连... (${this.retryCount}/${this.maxRetries})`);
+        
+        try {
+            // Dispose current peer
+            if (this.webRtcPeer) {
+                this.webRtcPeer.dispose();
+                this.webRtcPeer = null;
+            }
+            
+            // Wait for retry delay
+            await this.sleep(delay);
+            
+            // Close old session and create new one
+            if (this.sessionId) {
+                try {
+                    await fetch(`${this.apiBaseUrl}/session/${this.sessionId}`, {
+                        method: 'DELETE'
+                    });
+                } catch (e) {
+                    console.warn('[KurentoWebRTC] Failed to close old session:', e);
+                }
+            }
+            
+            // Create new session
+            const response = await fetch(`${this.apiBaseUrl}/session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: 'user-' + Date.now() })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to create session: ${response.status}`);
+            }
+            
+            const session = await response.json();
+            this.sessionId = session.sessionId;
+            
+            console.log('[KurentoWebRTC] New session created:', this.sessionId);
+            
+            // Create new WebRTC peer
+            await this.createWebRtcPeer();
+            
+            this.isReconnecting = false;
+            console.log('[KurentoWebRTC] Reconnection successful');
+            this.updateStatus('connected', '重连成功');
+            this.sendMessage('system', 'Kurento WebRTC 已重新连接');
+            
+        } catch (error) {
+            console.error('[KurentoWebRTC] Reconnection attempt failed:', error);
+            this.isReconnecting = false;
+            
+            // Try again if we haven't hit max retries
+            if (this.retryCount < this.maxRetries) {
+                await this.handleConnectionFailure();
+            }
+        }
+    }
+    
+    /**
+     * Resets retry counter on successful connection
+     */
+    resetRetryCount() {
+        if (this.retryCount > 0) {
+            console.log('[KurentoWebRTC] Connection established, resetting retry count');
+        }
+        this.retryCount = 0;
+    }
+    
+    /**
+     * Sleep helper for async/await
+     */
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
     
     /**
@@ -177,6 +334,7 @@ class KurentoWebRTCClient {
                 console.log('[KurentoWebRTC] SDP answer processed successfully');
                 this.updateStatus('connected', 'Kurento WebRTC 通话已建立');
                 this.sendMessage('system', 'Kurento WebRTC 连接成功！');
+                this.resetRetryCount();
             });
             
         } catch (error) {
@@ -218,6 +376,10 @@ class KurentoWebRTCClient {
     async stop() {
         try {
             console.log('[KurentoWebRTC] Stopping session...');
+            
+            // Reset retry state
+            this.retryCount = 0;
+            this.isReconnecting = false;
             
             if (this.webRtcPeer) {
                 this.webRtcPeer.dispose();
