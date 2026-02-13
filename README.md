@@ -149,7 +149,7 @@ http://localhost:8080/webrtc.html
 ### 功能特性 (Features)
 
 **基础 WebRTC 能力 (Basic WebRTC):**
-✅ **实时语音通信** - 基于 WebSocket 的音频流传输  
+✅ **实时语音通信** - WebSocket 实现的信令与音频传输（WebRTC signaling + WebSocket binary audio）  
 ✅ **VAD 语音检测** - 自动识别语音活动并分段  
 ✅ **ASR 语音识别** - Vosk 离线语音识别  
 ✅ **LLM 智能对话** - 支持多种 LLM 后端  
