@@ -39,4 +39,12 @@ public interface KurentoClientAdapter {
      * @return WebRtcEndpoint instance
      */
     WebRtcEndpoint createWebRTCEndpoint(MediaPipeline pipeline);
+    
+    /**
+     * Checks if the Kurento client is connected
+     * 检查 Kurento 客户端是否已连接
+     * 
+     * @return true if connected to Kurento Media Server
+     */
+    boolean isConnected();
 }

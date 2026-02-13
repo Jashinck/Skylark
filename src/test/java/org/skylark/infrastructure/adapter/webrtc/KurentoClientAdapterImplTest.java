@@ -8,11 +8,14 @@ import org.kurento.client.MediaPipeline;
 import org.kurento.client.WebRtcEndpoint;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.skylark.infrastructure.config.WebRTCProperties;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+
+import static org.mockito.Mockito.lenient;
 
 /**
  * Unit tests for KurentoClientAdapterImpl
@@ -33,11 +36,31 @@ class KurentoClientAdapterImplTest {
     @Mock
     private WebRtcEndpoint.Builder endpointBuilder;
     
+    @Mock
+    private WebRTCProperties webRTCProperties;
+    
+    @Mock
+    private WebRTCProperties.Kurento kurentoConfig;
+    
+    @Mock
+    private WebRTCProperties.Stun stunConfig;
+    
+    @Mock
+    private WebRTCProperties.Turn turnConfig;
+    
     private KurentoClientAdapterImpl adapter;
     
     @BeforeEach
     void setUp() {
-        adapter = new KurentoClientAdapterImpl();
+        // Mock configuration objects with lenient mode
+        lenient().when(webRTCProperties.getKurento()).thenReturn(kurentoConfig);
+        lenient().when(webRTCProperties.getStun()).thenReturn(stunConfig);
+        lenient().when(webRTCProperties.getTurn()).thenReturn(turnConfig);
+        lenient().when(kurentoConfig.getWsUri()).thenReturn("ws://localhost:8888/kurento");
+        lenient().when(stunConfig.getServer()).thenReturn("stun:stun.l.google.com:19302");
+        lenient().when(turnConfig.isEnabled()).thenReturn(false);
+        
+        adapter = new KurentoClientAdapterImpl(webRTCProperties);
         // Inject mock kurentoClient using reflection
         ReflectionTestUtils.setField(adapter, "kurentoClient", kurentoClient);
     }
@@ -132,5 +155,20 @@ class KurentoClientAdapterImplTest {
         
         // Act & Assert
         assertDoesNotThrow(() -> adapter.destroy());
+    }
+    
+    @Test
+    void testIsConnected_KurentoClientNotNull_ReturnsTrue() {
+        // Act & Assert
+        assertTrue(adapter.isConnected());
+    }
+    
+    @Test
+    void testIsConnected_KurentoClientNull_ReturnsFalse() {
+        // Arrange
+        ReflectionTestUtils.setField(adapter, "kurentoClient", null);
+        
+        // Act & Assert
+        assertFalse(adapter.isConnected());
     }
 }

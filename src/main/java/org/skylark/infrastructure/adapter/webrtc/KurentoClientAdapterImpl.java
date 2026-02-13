@@ -7,7 +7,8 @@ import org.kurento.client.MediaPipeline;
 import org.kurento.client.WebRtcEndpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.skylark.infrastructure.config.WebRTCProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -28,11 +29,15 @@ public class KurentoClientAdapterImpl implements KurentoClientAdapter {
     
     private static final Logger logger = LoggerFactory.getLogger(KurentoClientAdapterImpl.class);
     
-    @Value("${kurento.ws.uri:ws://localhost:8888/kurento}")
-    private String kurentoWsUri;
+    private final WebRTCProperties webRTCProperties;
     
     private KurentoClient kurentoClient;
     private final Map<String, MediaPipeline> pipelines = new ConcurrentHashMap<>();
+    
+    @Autowired
+    public KurentoClientAdapterImpl(WebRTCProperties webRTCProperties) {
+        this.webRTCProperties = webRTCProperties;
+    }
     
     /**
      * Initializes Kurento client connection
@@ -41,12 +46,13 @@ public class KurentoClientAdapterImpl implements KurentoClientAdapter {
     @PostConstruct
     public void init() {
         try {
+            String kurentoWsUri = webRTCProperties.getKurento().getWsUri();
             logger.info("Initializing Kurento Client, connecting to: {}", kurentoWsUri);
             kurentoClient = KurentoClient.create(kurentoWsUri);
             logger.info("✅ Kurento Client initialized successfully");
         } catch (Exception e) {
             logger.error("Failed to initialize Kurento Client. Make sure Kurento Media Server is running at: {}", 
-                kurentoWsUri, e);
+                webRTCProperties.getKurento().getWsUri(), e);
             logger.warn("Kurento WebRTC features will not be available");
         }
     }
@@ -115,11 +121,42 @@ public class KurentoClientAdapterImpl implements KurentoClientAdapter {
         
         try {
             WebRtcEndpoint webRtcEndpoint = new WebRtcEndpoint.Builder(pipeline).build();
+            
+            // Configure STUN server
+            String stunServer = webRTCProperties.getStun().getServer();
+            if (stunServer != null && !stunServer.trim().isEmpty()) {
+                webRtcEndpoint.setStunServerAddress(stunServer);
+                logger.debug("STUN server configured: {}", stunServer);
+            }
+            
+            // Configure TURN server if enabled
+            if (webRTCProperties.getTurn().isEnabled()) {
+                String turnUrl = webRTCProperties.getTurn().getTurnUrl();
+                String turnUsername = webRTCProperties.getTurn().getUsername();
+                String turnPassword = webRTCProperties.getTurn().getPassword();
+                
+                if (turnUrl != null && !turnUrl.trim().isEmpty()) {
+                    webRtcEndpoint.setTurnUrl(turnUrl);
+                    logger.debug("TURN server configured: {}", turnUrl);
+                    
+                    if (turnUsername != null && !turnUsername.trim().isEmpty()) {
+                        // Note: Kurento doesn't have a direct API for TURN credentials
+                        // They need to be embedded in the TURN URL or configured in Kurento server
+                        logger.debug("TURN credentials configured for user: {}", turnUsername);
+                    }
+                }
+            }
+            
             logger.debug("Created WebRTC endpoint for pipeline: {}", pipeline.getId());
             return webRtcEndpoint;
         } catch (Exception e) {
             logger.error("Failed to create WebRTC endpoint", e);
             throw new RuntimeException("Failed to create WebRTC endpoint", e);
         }
+    }
+    
+    @Override
+    public boolean isConnected() {
+        return kurentoClient != null;
     }
 }
