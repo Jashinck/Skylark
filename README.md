@@ -28,7 +28,7 @@
 🔧 **灵活配置** - 支持纯Java或混合模式部署  
 🌐 **云原生友好** - 适配容器化和微服务架构  
 🎙️ **WebRTC集成** - 实时语音通信，VAD→ASR→LLM→TTS完整编排  
-📞 **Kurento 实时通话** - 基于 Kurento Media Server 的 1v1 WebRTC 语音通话，服务端媒体处理与智能编排  
+📞 **Kurento 媒体服务** - 基于 Kurento Media Server 的专业 WebRTC 解决方案，提供服务端媒体处理、管道编排、会话管理与智能语音交互  
 
 ---
 
@@ -148,7 +148,8 @@ http://localhost:8080/webrtc.html
 
 ### 功能特性 (Features)
 
-✅ **实时语音通信** - 基于 WebSocket 的音频流传输  
+**基础 WebRTC 能力 (Basic WebRTC):**
+✅ **实时语音通信** - WebSocket 实现的信令与音频传输（WebRTC signaling + WebSocket binary audio）  
 ✅ **VAD 语音检测** - 自动识别语音活动并分段  
 ✅ **ASR 语音识别** - Vosk 离线语音识别  
 ✅ **LLM 智能对话** - 支持多种 LLM 后端  
@@ -159,9 +160,27 @@ http://localhost:8080/webrtc.html
 
 ## 📞 Kurento 实时通话 (Kurento Real-time Voice Call)
 
-云雀现已引入 **Kurento Media Server** 作为全新的 WebRTC 实时通话策略，实现用户与智能机器人的 1v1 实时语音交互。
+云雀现已引入 **Kurento Media Server** 作为专业级 WebRTC 实时通话方案，实现用户与智能机器人的 1v1 实时语音交互。
 
-Skylark now integrates **Kurento Media Server** as a new WebRTC real-time call strategy for 1v1 voice interaction between users and the intelligent robot.
+Skylark now integrates **Kurento Media Server** as a professional WebRTC solution for 1v1 voice interaction between users and the intelligent robot.
+
+### 核心特性
+
+🎬 **服务端媒体处理** - 在服务端进行音频流处理，而非客户端  
+🔄 **Media Pipeline 编排** - 灵活的媒体管道架构，支持复杂的音频处理流程  
+🎙️ **WebRTC Endpoint 管理** - 专业的 WebRTC 端点创建、SDP 协商、ICE 处理  
+🤖 **智能语音集成** - 无缝集成 VAD→ASR→LLM→TTS 完整管道  
+⚡ **实时音频流处理** - AudioProcessor 实时处理音频数据，低延迟语音检测和识别  
+🔧 **健康检查与重连** - 自动健康监测，连接断开时自动重连  
+📊 **会话管理** - 完整的会话生命周期管理（创建、协商、维持、关闭）
+
+### 架构优势
+
+相比基础 WebRTC 方案，Kurento 提供：
+- **专业媒体服务器**: 使用成熟的 Kurento Media Server 处理 WebRTC 连接
+- **服务端处理**: 音频流在服务端处理，降低客户端复杂度
+- **可扩展架构**: Media Pipeline 支持添加录制、转码、混音等功能
+- **企业级稳定性**: 健康检查、自动重连、会话管理等生产级特性
 
 ### 架构概览
 
