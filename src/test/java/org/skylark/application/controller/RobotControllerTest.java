@@ -25,13 +25,16 @@ class RobotControllerTest {
 
     @Mock
     private OrchestrationService orchestrationService;
+    
+    @Mock
+    private org.skylark.application.service.WebRTCService webRTCService;
 
     private RobotController controller;
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        controller = new RobotController(orchestrationService);
+        controller = new RobotController(orchestrationService, webRTCService);
         objectMapper = new ObjectMapper();
     }
 

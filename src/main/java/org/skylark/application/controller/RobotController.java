@@ -5,7 +5,10 @@ import org.slf4j.LoggerFactory;
 import org.skylark.application.dto.SessionStartRequest;
 import org.skylark.application.dto.SessionStartResponse;
 import org.skylark.application.dto.SessionStatusResponse;
+import org.skylark.application.dto.webrtc.*;
 import org.skylark.application.service.OrchestrationService;
+import org.skylark.application.service.WebRTCService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,12 +34,16 @@ public class RobotController {
     private static final Logger logger = LoggerFactory.getLogger(RobotController.class);
     
     private final OrchestrationService orchestrationService;
+    private final WebRTCService webRTCService;
     
     // Track active sessions managed via REST API
     private final Map<String, SessionInfo> activeSessions = new ConcurrentHashMap<>();
     
-    public RobotController(OrchestrationService orchestrationService) {
+    @Autowired
+    public RobotController(OrchestrationService orchestrationService, 
+                          WebRTCService webRTCService) {
         this.orchestrationService = orchestrationService;
+        this.webRTCService = webRTCService;
     }
 
     /**
@@ -183,6 +190,125 @@ public class RobotController {
         
         public long getStartTime() {
             return startTime;
+        }
+    }
+    
+    // ========== Kurento WebRTC Endpoints ==========
+    
+    /**
+     * Create a new Kurento WebRTC session
+     * 创建新的 Kurento WebRTC 会话
+     * 
+     * @param request Create session request with user ID
+     * @return WebRTC session response with session ID
+     */
+    @PostMapping("/kurento/session")
+    public ResponseEntity<WebRTCSessionResponse> createKurentoSession(
+            @RequestBody CreateSessionRequest request) {
+        try {
+            logger.info("Creating Kurento WebRTC session for user: {}", request.getUserId());
+            
+            String sessionId = webRTCService.createSession(request.getUserId());
+            
+            WebRTCSessionResponse response = new WebRTCSessionResponse(
+                sessionId,
+                "created",
+                "Kurento WebRTC session created successfully"
+            );
+            
+            logger.info("Kurento WebRTC session created: {}", sessionId);
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("Failed to create Kurento WebRTC session", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new WebRTCSessionResponse(null, "error", "Failed to create session"));
+        }
+    }
+    
+    /**
+     * Process SDP offer from client
+     * 处理来自客户端的 SDP offer
+     * 
+     * @param sessionId Session ID
+     * @param request SDP offer request
+     * @return SDP answer response
+     */
+    @PostMapping("/kurento/session/{sessionId}/offer")
+    public ResponseEntity<SdpAnswerResponse> processOffer(
+            @PathVariable String sessionId,
+            @RequestBody SdpOfferRequest request) {
+        try {
+            logger.info("Processing SDP offer for session: {}", sessionId);
+            
+            String sdpAnswer = webRTCService.processOffer(sessionId, request.getSdpOffer());
+            
+            SdpAnswerResponse response = new SdpAnswerResponse(sdpAnswer);
+            
+            logger.info("SDP offer processed successfully for session: {}", sessionId);
+            return ResponseEntity.ok(response);
+            
+        } catch (IllegalArgumentException e) {
+            logger.error("Session not found: {}", sessionId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new SdpAnswerResponse(null));
+        } catch (Exception e) {
+            logger.error("Failed to process SDP offer for session: {}", sessionId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new SdpAnswerResponse(null));
+        }
+    }
+    
+    /**
+     * Add ICE candidate to session
+     * 向会话添加 ICE candidate
+     * 
+     * @param sessionId Session ID
+     * @param request ICE candidate request
+     * @return Response entity
+     */
+    @PostMapping("/kurento/session/{sessionId}/ice-candidate")
+    public ResponseEntity<Void> addIceCandidate(
+            @PathVariable String sessionId,
+            @RequestBody IceCandidateRequest request) {
+        try {
+            logger.debug("Adding ICE candidate for session: {}", sessionId);
+            
+            webRTCService.addIceCandidate(
+                sessionId,
+                request.getCandidate(),
+                request.getSdpMid(),
+                request.getSdpMLineIndex()
+            );
+            
+            return ResponseEntity.ok().build();
+            
+        } catch (Exception e) {
+            logger.error("Failed to add ICE candidate for session: {}", sessionId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Close a Kurento WebRTC session
+     * 关闭 Kurento WebRTC 会话
+     * 
+     * @param sessionId Session ID to close
+     * @return Response entity
+     */
+    @DeleteMapping("/kurento/session/{sessionId}")
+    public ResponseEntity<Void> closeKurentoSession(@PathVariable String sessionId) {
+        try {
+            logger.info("Closing Kurento WebRTC session: {}", sessionId);
+            
+            webRTCService.closeSession(sessionId);
+            
+            logger.info("Kurento WebRTC session closed: {}", sessionId);
+            return ResponseEntity.ok().build();
+            
+        } catch (Exception e) {
+            logger.error("Failed to close Kurento WebRTC session: {}", sessionId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }
