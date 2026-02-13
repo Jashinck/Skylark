@@ -89,6 +89,13 @@
             <version>1.16.3</version>
         </dependency>
 
+        <!-- Kurento Java Client -->
+        <dependency>
+            <groupId>org.kurento</groupId>
+            <artifactId>kurento-client</artifactId>
+            <version>6.18.0</version>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
