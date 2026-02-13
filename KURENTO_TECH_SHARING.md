@@ -8,7 +8,7 @@
 
 ### 1.1 云雀项目简介
 
-**云雀 (Skylark)** 是一个基于纯 Java 生态构建的智能语音交互代理系统，核心能力包括：
+**云雀 (Skylark)** 是一个基于纯 Java 生态构建的Voice-Agent，核心能力包括：
 
 - **VAD (Voice Activity Detection)** — 基于 Silero + ONNX Runtime 的语音活动检测
 - **ASR (Automatic Speech Recognition)** — 基于 Vosk 的离线语音识别
