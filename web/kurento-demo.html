@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>云雀 (Skylark) - Kurento WebRTC 实时通话</title>
+    <!-- Kurento Utils Library -->
+    <script src="https://cdn.jsdelivr.net/npm/kurento-utils@6.18.0/js/kurento-utils.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .header .subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            padding: 12px 30px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #6c757d;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: #28a745;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 30px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .system-message {
+            text-align: center;
+            color: #6c757d;
+            font-size: 13px;
+            margin: 10px 0;
+            font-style: italic;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 13px;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 13px;
+            border: 1px solid #c3e6cb;
+        }
+
+        .input-area {
+            background: white;
+            border-top: 1px solid #e9ecef;
+            padding: 20px 30px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+        }
+
+        .audio-container {
+            display: none;
+        }
+
+        .messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .messages::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .messages::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                height: 100vh;
+                border-radius: 0;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .messages {
+                padding: 15px 20px;
+            }
+
+            .input-area {
+                padding: 15px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ 云雀 (Skylark) - Kurento WebRTC</h1>
+            <div class="subtitle">基于 Kurento 的 1v1 实时语音通话</div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">未连接</span>
+            </div>
+        </div>
+
+        <div class="messages" id="messages">
+            <div class="system-message">欢迎使用云雀 Kurento WebRTC 实时通话！</div>
+            <div class="system-message">点击"开始通话"建立 Kurento 连接</div>
+            <div class="system-message">⚠️ 注意：需要 Kurento Media Server 运行在 ws://localhost:8888/kurento</div>
+        </div>
+
+        <div class="input-area">
+            <div class="controls">
+                <button class="btn btn-success" id="startBtn">
+                    <span>📞 开始通话</span>
+                </button>
+                <button class="btn btn-danger" id="stopBtn" disabled>
+                    <span>⏸️ 结束通话</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio elements (hidden) -->
+    <div class="audio-container">
+        <audio id="localAudio" autoplay muted></audio>
+        <audio id="remoteAudio" autoplay></audio>
+    </div>
+
+    <!-- Kurento WebRTC Client -->
+    <script src="js/kurento-webrtc.js"></script>
+    
+    <script>
+        // UI Elements
+        const elements = {
+            messages: document.getElementById('messages'),
+            startBtn: document.getElementById('startBtn'),
+            stopBtn: document.getElementById('stopBtn'),
+            statusDot: document.getElementById('statusDot'),
+            statusText: document.getElementById('statusText')
+        };
+
+        // Kurento WebRTC Client instance
+        let kurentoClient = null;
+
+        /**
+         * Initialize the application
+         */
+        function init() {
+            setupEventListeners();
+            addSystemMessage('系统初始化完成');
+        }
+
+        /**
+         * Setup event listeners for buttons
+         */
+        function setupEventListeners() {
+            elements.startBtn.addEventListener('click', startCall);
+            elements.stopBtn.addEventListener('click', stopCall);
+        }
+
+        /**
+         * Starts a Kurento WebRTC call
+         */
+        async function startCall() {
+            try {
+                addSystemMessage('正在启动 Kurento WebRTC 通话...');
+                
+                // Create new Kurento client
+                kurentoClient = new KurentoWebRTCClient();
+                
+                // Set callbacks
+                kurentoClient.setStatusCallback(updateStatus);
+                kurentoClient.setMessageCallback(handleMessage);
+                
+                // Start the session
+                await kurentoClient.start();
+                
+                // Update UI
+                elements.startBtn.disabled = true;
+                elements.stopBtn.disabled = false;
+                
+            } catch (error) {
+                console.error('Failed to start call:', error);
+                addErrorMessage('启动通话失败: ' + error.message);
+                
+                // Reset UI
+                elements.startBtn.disabled = false;
+                elements.stopBtn.disabled = true;
+            }
+        }
+
+        /**
+         * Stops the Kurento WebRTC call
+         */
+        async function stopCall() {
+            try {
+                if (kurentoClient) {
+                    await kurentoClient.stop();
+                    kurentoClient = null;
+                }
+                
+                // Update UI
+                elements.startBtn.disabled = false;
+                elements.stopBtn.disabled = true;
+                
+                addSystemMessage('通话已结束');
+                
+            } catch (error) {
+                console.error('Failed to stop call:', error);
+                addErrorMessage('结束通话失败: ' + error.message);
+            }
+        }
+
+        /**
+         * Handles messages from Kurento client
+         */
+        function handleMessage(type, data) {
+            switch (type) {
+                case 'system':
+                    addSystemMessage(data);
+                    break;
+                case 'error':
+                    addErrorMessage(data);
+                    break;
+                case 'success':
+                    addSuccessMessage(data);
+                    break;
+                default:
+                    console.log('Unknown message type:', type, data);
+            }
+        }
+
+        /**
+         * Updates connection status
+         */
+        function updateStatus(state, text) {
+            elements.statusText.textContent = text;
+            
+            if (state === 'connected') {
+                elements.statusDot.classList.add('connected');
+            } else if (state === 'disconnected' || state === 'error') {
+                elements.statusDot.classList.remove('connected');
+            }
+        }
+
+        /**
+         * Adds a system message to the chat
+         */
+        function addSystemMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'system-message';
+            messageDiv.textContent = text;
+            elements.messages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        /**
+         * Adds an error message to the chat
+         */
+        function addErrorMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'error-message';
+            messageDiv.textContent = '❌ ' + text;
+            elements.messages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        /**
+         * Adds a success message to the chat
+         */
+        function addSuccessMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'success-message';
+            messageDiv.textContent = '✅ ' + text;
+            elements.messages.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        /**
+         * Scrolls messages to bottom
+         */
+        function scrollToBottom() {
+            elements.messages.scrollTop = elements.messages.scrollHeight;
+        }
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
