@@ -9,6 +9,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Kurento](https://img.shields.io/badge/Kurento-6.18.0-blueviolet.svg)](https://kurento.openvidu.io/)
 
 ---
 
@@ -27,6 +28,7 @@
 🔧 **灵活配置** - 支持纯Java或混合模式部署  
 🌐 **云原生友好** - 适配容器化和微服务架构  
 🎙️ **WebRTC集成** - 实时语音通信，VAD→ASR→LLM→TTS完整编排  
+📞 **Kurento 实时通话** - 基于 Kurento Media Server 的 1v1 WebRTC 语音通话，服务端媒体处理与智能编排  
 
 ---
 
@@ -72,7 +74,22 @@ MaryTTS 5.2.1 在 Maven Central 有依赖解析问题。要使用 MaryTTS:
 
 目前 TTS 服务使用占位符实现（生成静音 WAV 文件）。
 
-#### 2. 构建和启动 (Build and Run)
+#### 2. 启动 Kurento Media Server (Start Kurento Media Server)
+
+Kurento 通话功能依赖独立运行的 Kurento Media Server，推荐使用 Docker 快速启动：
+
+```bash
+docker pull kurento/kurento-media-server:latest
+
+docker run -d --name kms \
+  -p 8888:8888 \
+  -e KMS_MIN_PORT=40000 \
+  -e KMS_MAX_PORT=57000 \
+  -p 40000-57000:40000-57000/udp \
+  kurento/kurento-media-server:latest
+```
+
+#### 3. 构建和启动 (Build and Run)
 
 ```bash
 # 1. 构建Java服务
@@ -94,17 +111,20 @@ docker-compose up -d
 
 - Spring Boot 3.2.0
 - Spring Web (REST API)
-- Spring WebFlux (异步HTTP客户端)
+- Spring WebFlux (异步HTTP客户��)
 - Java 17
 - **Vosk 0.3.45** - 离线语音识别
 - **MaryTTS 5.2** - 文本转语音
 - **ONNX Runtime 1.16.3** - Silero VAD 语音活动检测
+- **Kurento Client 6.18.0** - WebRTC 媒体服务器客户端
+- **kurento-utils (CDN)** - 前端 WebRTC Peer 管理
 
 ### 实现状态 (Implementation Status)
 
 ✅ **ASR (自动语音识别)** - 已集成 Vosk 离线语音识别  
 ⚠️ **TTS (文本转语音)** - 已准备 MaryTTS 集成（需手动安装）  
-✅ **VAD (语音活动检测)** - 已集成 Silero VAD (ONNX Runtime)
+✅ **VAD (语音活动检测)** - 已集成 Silero VAD (ONNX Runtime)  
+✅ **Kurento WebRTC** - 已集成 Kurento Media Server 实现 1v1 实时语音通话  
 
 所有服务均使用纯 Java 实现，无需 Python 依赖。
 
@@ -137,6 +157,65 @@ http://localhost:8080/webrtc.html
 
 详细文档: [WebRTC 集成指南](./WEBRTC_GUIDE.md)
 
+## 📞 Kurento 实时通话 (Kurento Real-time Voice Call)
+
+云雀现已引入 **Kurento Media Server** 作为全新的 WebRTC 实时通话策略，实现用户与智能机器人的 1v1 实时语音交互。
+
+Skylark now integrates **Kurento Media Server** as a new WebRTC real-time call strategy for 1v1 voice interaction between users and the intelligent robot.
+
+### 架构概览
+
+```
+Browser (kurento-webrtc.js)
+    │ REST API
+    ↓
+RobotController (Kurento Endpoints)
+    │
+    ↓
+WebRTCService ←→ VAD / ASR / LLM / TTS
+    │
+    ↓
+KurentoClientAdapter → Kurento Media Server (ws://localhost:8888/kurento)
+```
+
+### 快速开始
+
+```bash
+# 1. 启动 Kurento Media Server (Docker)
+docker run -d --name kms -p 8888:8888 \
+  -e KMS_MIN_PORT=40000 -e KMS_MAX_PORT=57000 \
+  -p 40000-57000:40000-57000/udp \
+  kurento/kurento-media-server:latest
+
+# 2. 启动 Skylark 服务
+mvn spring-boot:run
+
+# 3. 访问 Kurento 演示页面
+http://localhost:8080/kurento-demo.html
+```
+
+### API 端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/api/webrtc/kurento/session` | 创建 Kurento WebRTC 会话 |
+| `POST` | `/api/webrtc/kurento/session/{id}/offer` | 处理 SDP Offer |
+| `POST` | `/api/webrtc/kurento/session/{id}/ice-candidate` | 添加 ICE Candidate |
+| `DELETE` | `/api/webrtc/kurento/session/{id}` | 关闭会话 |
+
+### 配置
+
+```yaml
+kurento:
+  ws:
+    uri: ws://localhost:8888/kurento
+webrtc:
+  stun:
+    server: stun:stun.l.google.com:19302
+```
+
+详细文档: [Kurento 集成指南](./KURENTO_INTEGRATION.md)
+
 ## 📁 项目结构 (Project Structure)
 
 ### 企业级DDD分层架构 (Enterprise DDD Layered Architecture)
@@ -151,12 +230,12 @@ skylark/
 │   │   │   └── controller/             # REST控制器
 │   │   ├── application/                # 应用层
 │   │   │   ├── dto/                    # 数据传输对象
-│   │   │   └── service/                # 应用服务 (ASR, TTS, VAD)
+│   │   │   └── service/                # 应用服务 (ASR, TTS, VAD, WebRTC)
 │   │   ├── domain/                     # 领域层
 │   │   │   ├── model/                  # 领域模型 (Dialogue, Message)
 │   │   │   └── service/                # 领域服务接口
 │   │   ├── infrastructure/             # 基础设施层
-│   │   │   ├── adapter/                # 适配器 (ASR, TTS, VAD, LLM)
+│   │   │   ├── adapter/                # 适配器 (ASR, TTS, VAD, LLM, WebRTC/Kurento)
 │   │   │   └── config/                 # Spring配置
 │   │   └── common/                     # 公共层
 │   │       ├── constant/               # 常量定义
@@ -167,15 +246,20 @@ skylark/
 │   ├── config-java-only.yaml          # 纯Java配置
 │   └── config.yaml                     # 备用配置
 ├── web/                                 # Web前端
+│   ├── js/kurento-webrtc.js           # Kurento WebRTC 客户端
+│   ├── kurento-demo.html              # Kurento 演示页面
+│   └── webrtc.html                    # WebRTC 交互页面
+├── KURENTO_INTEGRATION.md              # Kurento 集成指南
+├── WEBRTC_GUIDE.md                     # WebRTC 集成指南
 └── docker-compose.yml                   # Docker编排
 ```
 
 ### 架构说明 (Architecture Description)
 
-- **API层** (`api`): REST API接口，提供对外服务
-- **应用层** (`application`): 业务逻辑编排，服务组合
+- **API层** (`api`): REST API接口，提供对外服务（包含 Kurento WebRTC 端点）
+- **应用层** (`application`): 业务逻辑编排，服务组合（包含 WebRTCService）
 - **领域层** (`domain`): 核心业务模型和规则
-- **基础设施层** (`infrastructure`): 外部依赖适配，技术实现
+- **基础设施层** (`infrastructure`): 外部依赖适配，技术实现（包含 Kurento 适配器、WebRTCSession、AudioProcessor）
 - **公共层** (`common`): 通用工具和组件
 
 ---
