@@ -8,12 +8,7 @@
 
 ---
 
-- 📄 License: Apache 2.0
-- ☕ Java 17
-- 🍃 Spring Boot 3.2.0
-- 📡 Kurento 6.18.0
-- 🔊 LiveKit 0.12.0
-- 🤝 PRs Welcome
+**License**: Apache 2.0 | **Java**: 17 | **Spring Boot**: 3.2.0 | **Kurento**: 6.18.0 | **LiveKit**: 0.12.0 | **PRs Welcome**
 
 ---
 
@@ -683,9 +678,8 @@ java -jar target/skylark.jar
 
 ### 7.3 访问 Demo
 
-🌐 Kurento 演示页面：http://localhost:8080/kurento-demo.html
-
-🌐 WebSocket 页面：http://localhost:8080/webrtc.html
+- 🌐 Kurento 演示页面：http://localhost:8080/kurento-demo.html
+- 🌐 WebSocket 页面：http://localhost:8080/webrtc.html
 
 ### 7.4 配置文件
 
