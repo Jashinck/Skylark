@@ -36,8 +36,14 @@ kurento:
 
 # WebRTC Configuration
 webrtc:
+  # Active strategy: websocket, kurento, or livekit
+  strategy: websocket
   kurento:
     ws-uri: ws://localhost:8888/kurento
+  livekit:
+    url: ""
+    api-key: ""
+    api-secret: ""
   stun:
     server: stun:stun.l.google.com:19302
   turn:

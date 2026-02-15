@@ -18,9 +18,18 @@ class WebRTCPropertiesTest {
         // Arrange & Act
         WebRTCProperties properties = new WebRTCProperties();
         
+        // Assert - Strategy default
+        assertEquals("websocket", properties.getStrategy());
+        
         // Assert - Kurento defaults
         assertNotNull(properties.getKurento());
         assertEquals("ws://localhost:8888/kurento", properties.getKurento().getWsUri());
+        
+        // Assert - LiveKit defaults
+        assertNotNull(properties.getLivekit());
+        assertEquals("", properties.getLivekit().getUrl());
+        assertEquals("", properties.getLivekit().getApiKey());
+        assertEquals("", properties.getLivekit().getApiSecret());
         
         // Assert - STUN defaults
         assertNotNull(properties.getStun());
@@ -177,5 +186,51 @@ class WebRTCPropertiesTest {
         
         // Assert
         assertEquals("turn:turn.example.com:3478", turnUrl);
+    }
+    
+    @Test
+    void testStrategyConfiguration() {
+        // Arrange
+        WebRTCProperties properties = new WebRTCProperties();
+        
+        // Act & Assert - default
+        assertEquals("websocket", properties.getStrategy());
+        
+        // Act - change to kurento
+        properties.setStrategy("kurento");
+        assertEquals("kurento", properties.getStrategy());
+        
+        // Act - change to livekit
+        properties.setStrategy("livekit");
+        assertEquals("livekit", properties.getStrategy());
+    }
+    
+    @Test
+    void testLiveKitConfiguration() {
+        // Arrange
+        WebRTCProperties properties = new WebRTCProperties();
+        WebRTCProperties.LiveKit liveKit = properties.getLivekit();
+        
+        // Act
+        liveKit.setUrl("wss://livekit.example.com");
+        liveKit.setApiKey("test-api-key");
+        liveKit.setApiSecret("test-api-secret");
+        
+        // Assert
+        assertEquals("wss://livekit.example.com", liveKit.getUrl());
+        assertEquals("test-api-key", liveKit.getApiKey());
+        assertEquals("test-api-secret", liveKit.getApiSecret());
+    }
+    
+    @Test
+    void testLiveKitDefaultValues() {
+        // Arrange & Act
+        WebRTCProperties properties = new WebRTCProperties();
+        WebRTCProperties.LiveKit liveKit = properties.getLivekit();
+        
+        // Assert
+        assertEquals("", liveKit.getUrl());
+        assertEquals("", liveKit.getApiKey());
+        assertEquals("", liveKit.getApiSecret());
     }
 }

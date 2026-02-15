@@ -1,5 +1,7 @@
 package org.skylark.application.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.skylark.application.dto.SessionStartRequest;
@@ -308,6 +310,83 @@ public class RobotController {
             
         } catch (Exception e) {
             logger.error("Failed to close Kurento WebRTC session: {}", sessionId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    // ========== LiveKit WebRTC Endpoints ==========
+    
+    /**
+     * Create a new LiveKit WebRTC session
+     * 创建新的 LiveKit WebRTC 会话
+     * 
+     * <p>Creates a LiveKit room, generates an access token, and returns
+     * connection info for the client to connect directly to LiveKit server.</p>
+     * 
+     * @param request Create session request with user ID
+     * @return LiveKit connection response with token and server URL
+     */
+    @PostMapping("/livekit/session")
+    public ResponseEntity<LiveKitConnectionResponse> createLiveKitSession(
+            @RequestBody CreateSessionRequest request) {
+        try {
+            logger.info("Creating LiveKit WebRTC session for user: {}", request.getUserId());
+            
+            // Create session via strategy
+            String sessionId = webRTCService.createSession(request.getUserId());
+            
+            // Get connection info (token + URL) from strategy
+            String connectionInfo = webRTCService.processOffer(sessionId, "");
+            
+            // Parse connection info JSON
+            String token = null;
+            String url = null;
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode node = mapper.readTree(connectionInfo);
+                token = node.has("token") ? node.get("token").asText() : null;
+                url = node.has("url") ? node.get("url").asText() : null;
+            } catch (Exception parseError) {
+                logger.warn("Could not parse LiveKit connection info as JSON, using raw value");
+            }
+            
+            LiveKitConnectionResponse response = new LiveKitConnectionResponse(
+                sessionId,
+                token,
+                url,
+                "created",
+                "LiveKit WebRTC session created successfully"
+            );
+            
+            logger.info("LiveKit WebRTC session created: {}", sessionId);
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("Failed to create LiveKit WebRTC session", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new LiveKitConnectionResponse(null, null, null, "error", "Failed to create LiveKit session"));
+        }
+    }
+    
+    /**
+     * Close a LiveKit WebRTC session
+     * 关闭 LiveKit WebRTC 会话
+     * 
+     * @param sessionId Session ID to close
+     * @return Response entity
+     */
+    @DeleteMapping("/livekit/session/{sessionId}")
+    public ResponseEntity<Void> closeLiveKitSession(@PathVariable String sessionId) {
+        try {
+            logger.info("Closing LiveKit WebRTC session: {}", sessionId);
+            
+            webRTCService.closeSession(sessionId);
+            
+            logger.info("LiveKit WebRTC session closed: {}", sessionId);
+            return ResponseEntity.ok().build();
+            
+        } catch (Exception e) {
+            logger.error("Failed to close LiveKit WebRTC session: {}", sessionId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
