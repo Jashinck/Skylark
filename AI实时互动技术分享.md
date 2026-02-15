@@ -98,19 +98,17 @@ AI实时互动技术是指利用人工智能技术，实现人与机器之间的
 
 云雀系统的核心优势在于对四大模块的**智能编排**：
 
-```
-用户说话
-    ↓
-[VAD检测] → 检测到语音活动
-    ↓
-[ASR识别] → 转换为文字："今天天气怎么样？"
-    ↓
-[LLM理解] → 理解意图并生成回复："今天北京天气晴，温度20-28℃"
-    ↓
-[TTS合成] → 转换为语音播放
-    ↓
-用户听到回复
-```
+🗣️ 用户说话
+  ↓
+**VAD检测** → 检测到语音活动
+  ↓
+**ASR识别** → 转换为文字："今天天气怎么样？"
+  ↓
+**LLM理解** → 理解意图并生成回复："今天北京天气晴，温度20-28℃"
+  ↓
+**TTS合成** → 转换为语音播放
+  ↓
+🔊 用户听到回复
 
 这个编排流程看似简单，但实际实现中需要考虑：
 - **实时性**：整个流程需要在秒级完成
@@ -126,29 +124,19 @@ AI实时互动技术是指利用人工智能技术，实现人与机器之间的
 
 云雀采用标准的企业级Spring Boot DDD分层架构，实现清晰的职责分离：
 
-```
-┌────────────────────────────────────┐
-│      API层 (REST Controllers)       │
-│      对外提供REST API接口            │
-└──────────────┬─────────────────────┘
-               ↓
-┌────────────────────────────────────┐
-│    应用层 (Application Services)    │
-│  ASRService / TTSService / VADService │
-│      业务逻辑编排和组合              │
-└──────────────┬─────────────────────┘
-               ↓
-┌────────────────────────────────────┐
-│      领域层 (Domain Models)         │
-│   Dialogue / Message 核心业务模型   │
-└──────────────┬─────────────────────┘
-               ↓
-┌────────────────────────────────────┐
-│   基础设施层 (Infrastructure)        │
-│  DirectAdapters / HttpAdapters      │
-│  Vosk / MaryTTS / Silero VAD / LLM  │
-└────────────────────────────────────┘
-```
+**API层** (REST Controllers)
+  ↓ 对外提供REST API接口
+
+**应用层** (Application Services)
+  ↓ ASRService / TTSService / VADService
+  ↓ 业务逻辑编排和组合
+
+**领域层** (Domain Models)
+  ↓ Dialogue / Message 核心业务模型
+
+**基础设施层** (Infrastructure)
+  → DirectAdapters / HttpAdapters
+  → Vosk / MaryTTS / Silero VAD / LLM
 
 ### 灵活的适配器模式
 
@@ -257,13 +245,11 @@ curl -X POST http://localhost:8080/tts \
 
 ### 1. 纯Java生态的价值
 
-| 优势 | 说明 |
-|------|------|
-| **统一技术栈** | 降低学习成本和维护难度 |
-| **类型安全** | 编译期错误检测，更少bug |
-| **性能优异** | JIT编译优化，高效运行时 |
-| **企业级支持** | Spring生态完善，企业特性丰富 |
-| **易于部署** | 单JAR包，无需额外环境配置 |
+- **统一技术栈**：降低学习成本和维护难度
+- **类型安全**：编译期错误检测，更少bug
+- **性能优异**：JIT编译优化，高效运行时
+- **企业级支持**：Spring生态完善，企业特性丰富
+- **易于部署**：单JAR包，无需额外环境配置
 
 ### 2. 架构设计的优势
 
@@ -364,21 +350,19 @@ webrtc:
 
 ### 📋 实现路线图
 
-```
-✅ 已完成: 基础 WebSocket WebRTC 方案
-    ↓
-✅ 已完成: Kurento Media Server 集成
-    ↓
-✅ 已完成: LiveKit Server 集成 + 可插拔策略架构
-    ↓
-Q2 2026: 声网Agora SDK集成
-    ↓
-Q3 2026: 腾讯云TRTC适配
-    ↓
-Q4 2026: 阿里云RTC、网易云信适配
-    ↓
-2027: 完善功能和性能优化
-```
+✅ 已完成：基础 WebSocket WebRTC 方案
+  ↓
+✅ 已完成：Kurento Media Server 集成
+  ↓
+✅ 已完成：LiveKit Server 集成 + 可插拔策略架构
+  ↓
+Q2 2026：声网Agora SDK集成
+  ↓
+Q3 2026：腾讯云TRTC适配
+  ↓
+Q4 2026：阿里云RTC、网易云信适配
+  ↓
+2027：完善功能和性能优化
 
 ---
 
@@ -418,15 +402,13 @@ Vosk支持流式识别，带来的优势：
 
 经过实际测试，云雀系统达到了以下性能指标：
 
-| 指标 | 数值 | 说明 |
-|------|------|------|
-| **VAD检测延迟** | <50ms | 实时检测语音活动 |
-| **ASR识别延迟** | <200ms | 1秒音频识别时间 |
-| **LLM响应延迟** | <1s | 依赖模型大小 |
-| **TTS合成延迟** | <300ms | 短文本合成时间 |
-| **端到端延迟** | <2s | 完整交互流程 |
-| **系统内存** | ~300MB | Java服务占用 |
-| **并发能力** | 100+ | 单机并发请求数 |
+- **VAD检测延迟**：<50ms — 实时检测语音活动
+- **ASR识别延迟**：<200ms — 1秒音频识别时间
+- **LLM响应延迟**：<1s — 依赖模型大小
+- **TTS合成延迟**：<300ms — 短文本合成时间
+- **端到端延迟**：<2s — 完整交互流程
+- **系统内存**：~300MB — Java服务占用
+- **并发能力**：100+ — 单机并发请求数
 
 ---
 
@@ -577,23 +559,19 @@ AI实时互动技术正在改变我们与机器交互的方式。云雀(Skylark)
 
 ---
 
-<div align="center">
-
 ### 🐦 云雀 (Skylark)
 
 **生于云端，鸣于指尖**
 
 *让智能语音交互触手可及*
 
-[![Star on GitHub](https://img.shields.io/github/stars/Jashinck/Skylark?style=social)](https://github.com/Jashinck/Skylark)
-[![Fork on GitHub](https://img.shields.io/github/forks/Jashinck/Skylark?style=social)](https://github.com/Jashinck/Skylark)
-[![Watch on GitHub](https://img.shields.io/github/watchers/Jashinck/Skylark?style=social)](https://github.com/Jashinck/Skylark)
+⭐ **Star** | 🍴 **Fork** | 👀 **Watch** — [GitHub: Skylark](https://github.com/Jashinck/Skylark)
 
 **🌟 如果这篇文章对你有帮助，欢迎Star支持！**
 
-[⭐ Star项目](https://github.com/Jashinck/Skylark) · [📖 阅读文档](https://github.com/Jashinck/Skylark#readme) · [💬 参与讨论](https://github.com/Jashinck/Skylark/discussions) · [🐛 报告问题](https://github.com/Jashinck/Skylark/issues)
+⭐ Star项目 · 📖 阅读文档 · 💬 参与讨论 · 🐛 报告问题
 
-</div>
+👉 https://github.com/Jashinck/Skylark
 
 ---
 
