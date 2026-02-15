@@ -1,18 +1,13 @@
 package org.skylark.application.service;
 
-import org.kurento.client.IceCandidate;
-import org.kurento.client.MediaPipeline;
-import org.kurento.client.WebRtcEndpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.skylark.infrastructure.adapter.webrtc.AudioProcessor;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
-import org.skylark.infrastructure.adapter.webrtc.WebRTCSession;
 import org.skylark.infrastructure.adapter.webrtc.strategy.WebRTCChannelStrategy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -38,7 +33,6 @@ public class WebRTCService {
     private final TTSService ttsService;
     private final WebRTCChannelStrategy channelStrategy;
     
-    private final ConcurrentHashMap<String, WebRTCSession> sessions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AudioProcessor> audioProcessors = new ConcurrentHashMap<>();
     
     @Autowired
