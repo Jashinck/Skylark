@@ -205,7 +205,7 @@ ASR (接口)
 WebRTCChannelStrategy (接口)
   ├── WebSocketChannelStrategy (WebSocket 方案)
   ├── KurentoChannelStrategy (Kurento 媒体服务器方案)
-  └── LiveKitChannelStrategy (LiveKit 实时通信方案)
+  └── LiveKitChannelStrategy (LiveKit 云原生方案)
 ```
 
 通过 `webrtc.strategy` 配置项动态选择策略实现。

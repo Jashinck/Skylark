@@ -8,7 +8,7 @@
 |------|--------|------|
 | WebSocket | `websocket` | 基于 WebSocket 的基础音频传输方案 |
 | Kurento | `kurento` | 基于 Kurento Media Server 的专业媒体服务器方案 |
-| LiveKit | `livekit` | 基于 LiveKit Server 的现代化实时通信方案 |
+| LiveKit | `livekit` | 基于 LiveKit Server 的云原生实时通信方案 |
 
 Skylark now integrates multiple WebRTC real-time voice communication solutions, supporting the complete VAD→ASR→LLM→TTS orchestration pipeline. Through the pluggable **WebRTCChannelStrategy** pattern, three WebRTC strategies are supported: WebSocket, Kurento, and LiveKit.
 
@@ -364,7 +364,7 @@ public void afterConnectionClosed(WebSocketSession session, CloseStatus status)
 
 ### 概述
 
-LiveKit 是一个基于 Go 语言构建的现代化开源 WebRTC 媒体服务器，云雀通过 `LiveKitChannelStrategy` 实现了 LiveKit 的集成。
+LiveKit 是一个基于 Go 语言构建的云原生开源 WebRTC 媒体服务器，云雀通过 `LiveKitChannelStrategy` 实现了 LiveKit 的集成。
 
 ### 配置
 
@@ -381,7 +381,7 @@ webrtc:
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `POST` | `/api/webrtc/livekit/session` | 创建 LiveKit 会话，返回 Token 和服务器 URL |
+| `POST` | `/api/webrtc/livekit/session` | 创建 LiveKit 会话（返回 Token + URL） |
 | `DELETE` | `/api/webrtc/livekit/session/{id}` | 关闭会话，删除房间 |
 
 ### 客户端
@@ -398,12 +398,11 @@ webrtc:
 
 ```bash
 docker run -d --name livekit \
-  -p 7880:7880 -p 7881:7881 \
-  -e LIVEKIT_KEYS="devkey: secret" \
-  livekit/livekit-server:latest
+  -p 7880:7880 -p 7881:7881 -p 7882:7882/udp \
+  livekit/livekit-server --dev --bind 0.0.0.0
 ```
 
-详细文档请参考：[LiveKit 官方文档](https://docs.livekit.io/)
+详细文档请参考：[LiveKit 官方文档](https://docs.livekit.io/) | [WebRTC 双框架技术博客](./WEBRTC_FRAMEWORKS_BLOG.md)
 
 ## 策略切换 (Strategy Switching)
 

@@ -299,7 +299,7 @@ curl -X POST http://localhost:8080/tts \
 - 通过 `kurento-client 6.18.0` Java SDK 集成
 
 #### 3. 🆕 LiveKit Server 集成
-- 基于 Go 语言构建的现代化高性能媒体服务器
+- 基于 Go 语言构建的现代化高性能云原生媒体服务器
 - 房间管理与 JWT Token 鉴权
 - 自适应码率传输，低延迟通信
 - 通过 `livekit-server 0.12.0` Java SDK 集成
@@ -312,13 +312,6 @@ curl -X POST http://localhost:8080/tts \
 ```yaml
 webrtc:
   strategy: livekit  # 可选: websocket, kurento, livekit
-```
-
-```
-WebRTCChannelStrategy (策略接口)
-  ├── WebSocketChannelStrategy (WebSocket 基础方案)
-  ├── KurentoChannelStrategy (Kurento 专业方案)
-  └── LiveKitChannelStrategy (LiveKit 现代化方案)
 ```
 
 ### 🎯 下一步：适配主流RTC-PAAS厂商

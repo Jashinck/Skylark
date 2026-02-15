@@ -10,7 +10,7 @@
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Kurento](https://img.shields.io/badge/Kurento-6.18.0-blueviolet.svg)](https://kurento.openvidu.io/)
-[![LiveKit](https://img.shields.io/badge/LiveKit-0.12.0-ff6600.svg)](https://livekit.io/)
+[![LiveKit](https://img.shields.io/badge/LiveKit-0.12.0-ff69b4.svg)](https://livekit.io/)
 
 ---
 
@@ -30,8 +30,7 @@
 🌐 **云原生友好** - 适配容器化和微服务架构  
 🎙️ **WebRTC集成** - 实时语音通信，VAD→ASR→LLM→TTS完整编排  
 📞 **Kurento 媒体服务** - 基于 Kurento Media Server 的专业 WebRTC 解决方案，提供服务端媒体处理、管道编排、会话管理与智能语音交互  
-🔌 **LiveKit 实时通信** - 基于 LiveKit Server 的现代化 WebRTC 解决方案，支持房间管理、Token 鉴权、自动重连与低延迟音视频通信  
-🔄 **可插拔 WebRTC 策略** - 支持 WebSocket / Kurento / LiveKit 三种 WebRTC 策略自由切换  
+🚀 **LiveKit 云原生** - 基于 LiveKit 的轻量级云原生 WebRTC 方案，Token 鉴权即用，Room 模型天然支持多人场景  
 
 ---
 
@@ -120,9 +119,9 @@ docker-compose up -d
 - **MaryTTS 5.2** - 文本转语音
 - **ONNX Runtime 1.16.3** - Silero VAD 语音活动检测
 - **Kurento Client 6.18.0** - WebRTC 媒体服务器客户端
-- **LiveKit Server SDK 0.12.0** - LiveKit 实时音视频服务端 SDK
+- **LiveKit Server SDK 0.12.0** - 云原生 WebRTC 服务端 SDK
 - **kurento-utils (CDN)** - 前端 WebRTC Peer 管理
-- **livekit-client 2.6.4 (CDN)** - 前端 LiveKit 客户端 SDK
+- **livekit-client (CDN v2.6.4)** - 前端 LiveKit 客户端 SDK
 
 ### 实现状态 (Implementation Status)
 
@@ -130,8 +129,7 @@ docker-compose up -d
 ⚠️ **TTS (文本转语音)** - 已准备 MaryTTS 集成（需手动安装）  
 ✅ **VAD (语音活动检测)** - 已集成 Silero VAD (ONNX Runtime)  
 ✅ **Kurento WebRTC** - 已集成 Kurento Media Server 实现 1v1 实时语音通话  
-✅ **LiveKit WebRTC** - 已集成 LiveKit Server 实现现代化实时音视频通信  
-✅ **可插拔 WebRTC 策略** - 支持 WebSocket / Kurento / LiveKit 三种策略切换  
+✅ **LiveKit WebRTC** - 已集成 LiveKit 实现云原生 WebRTC 实时通话  
 
 所有服务均使用纯 Java 实现，无需 Python 依赖。
 
@@ -248,59 +246,28 @@ webrtc:
 
 详细文档: [Kurento 集成指南](./KURENTO_INTEGRATION.md)
 
-## 🔌 LiveKit 实时通信 (LiveKit Real-time Communication)
+## 🚀 LiveKit 云原生通话 (LiveKit Cloud-Native Voice Call)
 
-云雀现已引入 **LiveKit Server** 作为现代化 WebRTC 实时通信方案，支持房间管理、JWT Token 鉴权、自动重连与低延迟音视频通信。
+云雀现已引入 **LiveKit** 作为云原生 WebRTC 方案，提供轻量级的实时语音接入能力。
 
-Skylark now integrates **LiveKit Server** as a modern WebRTC solution, supporting room management, JWT token authentication, automatic reconnection, and low-latency audio/video communication.
+Skylark now integrates **LiveKit** as a cloud-native WebRTC solution with lightweight real-time voice access.
 
 ### 核心特性
 
-🏠 **房间管理** - 基于 LiveKit Server 的房间创建与生命周期管理  
-🔑 **JWT Token 鉴权** - 安全的 Token 签发与验证机制  
-🔄 **自动重连** - 客户端指数退避重连策略，最大化连接稳定性  
-🎙️ **音频优化** - 回声消除、噪声抑制、自动增益控制  
-⚡ **低延迟通信** - 基于 LiveKit 的高效 WebRTC 传输  
-🔧 **策略可插拔** - 与 WebSocket、Kurento 方案无缝切换  
-
-### 架构优势
-
-相比其他 WebRTC 方案，LiveKit 提供：
-- **现代化架构**: 基于 Go 语言构建的高性能媒体服务器
-- **开源生态**: 完善的服务端与客户端 SDK 生态
-- **Token 鉴权**: 标准 JWT 机制，安全可控
-- **自适应传输**: 基于网络状况自动调整码率和分辨率
-- **易于部署**: 支持 Docker 快速部署，配置简洁
-
-### 架构概览
-
-```
-Browser (livekit-webrtc.js)
-    │ REST API
-    ↓
-RobotController (LiveKit Endpoints)
-    │
-    ↓
-WebRTCService ←→ LiveKitChannelStrategy
-    │
-    ↓
-LiveKitClientAdapter → LiveKit Server (ws://localhost:7880)
-```
+☁️ **云原生架构** - Go 运行时，容器友好，资源占用极低  
+🔑 **Token 鉴权** - JWT Token 即可完成接入，无需复杂 SDP/ICE 手动协商  
+🏠 **Room 模型** - 基于房间的会话管理，天然支持多人场景  
+🔄 **自动重连** - 客户端内建断线重连和连接质量监控  
 
 ### 快速开始
 
 ```bash
 # 1. 启动 LiveKit Server (Docker)
 docker run -d --name livekit \
-  -p 7880:7880 -p 7881:7881 \
-  -e LIVEKIT_KEYS="devkey: secret" \
-  livekit/livekit-server:latest
+  -p 7880:7880 -p 7881:7881 -p 7882:7882/udp \
+  livekit/livekit-server --dev --bind 0.0.0.0
 
-# 2. 配置 application.yaml
-# webrtc.strategy: livekit
-# webrtc.livekit.url: ws://localhost:7880
-# webrtc.livekit.api-key: devkey
-# webrtc.livekit.api-secret: secret
+# 2. 修改 application.yaml 中 webrtc.strategy 为 livekit
 
 # 3. 启动 Skylark 服务
 mvn spring-boot:run
@@ -313,36 +280,10 @@ http://localhost:8080/livekit-demo.html
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `POST` | `/api/webrtc/livekit/session` | 创建 LiveKit 会话，返回 Token 和服务器 URL |
-| `DELETE` | `/api/webrtc/livekit/session/{id}` | 关闭会话，删除房间 |
+| `POST` | `/api/webrtc/livekit/session` | 创建 LiveKit 会话（返回 Token + URL） |
+| `DELETE` | `/api/webrtc/livekit/session/{id}` | 关闭会话 |
 
-### 配置
-
-```yaml
-webrtc:
-  strategy: livekit
-  livekit:
-    url: ws://localhost:7880
-    api-key: your-api-key
-    api-secret: your-api-secret
-```
-
-### 可插拔 WebRTC 策略
-
-云雀通过 `WebRTCChannelStrategy` 接口实现可插拔的 WebRTC 方案切换：
-
-| 策略 | 配置值 | 说明 |
-|------|--------|------|
-| WebSocket | `websocket` | 基于 WebSocket 的基础方案 |
-| Kurento | `kurento` | 专业媒体服务器方案 |
-| LiveKit | `livekit` | 现代化实时通信方案 |
-
-通过修改 `webrtc.strategy` 配置即可切换：
-
-```yaml
-webrtc:
-  strategy: livekit  # 可选: websocket, kurento, livekit
-```
+详细文档: [WebRTC 双框架技术博客](./WEBRTC_FRAMEWORKS_BLOG.md)
 
 ## 📁 项目结构 (Project Structure)
 
@@ -380,16 +321,17 @@ skylark/
 │   ├── livekit-demo.html              # LiveKit 演示页面
 │   └── webrtc.html                    # WebRTC 交互页面
 ├── KURENTO_INTEGRATION.md              # Kurento 集成指南
+├── WEBRTC_FRAMEWORKS_BLOG.md           # WebRTC 双框架技术博客
 ├── WEBRTC_GUIDE.md                     # WebRTC 集成指南
 └── docker-compose.yml                   # Docker编排
 ```
 
 ### 架构说明 (Architecture Description)
 
-- **API层** (`api`): REST API接口，提供对外服务（包含 Kurento / LiveKit WebRTC 端点）
+- **API层** (`api`): REST API接口，提供对外服务（包含 Kurento 和 LiveKit WebRTC 端点）
 - **应用层** (`application`): 业务逻辑编排，服务组合（包含 WebRTCService）
 - **领域层** (`domain`): 核心业务模型和规则
-- **基础设施层** (`infrastructure`): 外部依赖适配，技术实现（包含 Kurento 适配器、LiveKit 适配器、WebRTC 策略、AudioProcessor）
+- **基础设施层** (`infrastructure`): 外部依赖适配，技术实现（包含 Kurento/LiveKit 适配器、WebRTCSession、AudioProcessor、策略模式）
 - **公共层** (`common`): 通用工具和组件
 
 ---

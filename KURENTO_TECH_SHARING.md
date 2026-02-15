@@ -14,7 +14,7 @@
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Kurento](https://img.shields.io/badge/Kurento-6.18.0-blueviolet.svg)](https://kurento.openvidu.io/)
-[![LiveKit](https://img.shields.io/badge/LiveKit-0.12.0-ff6600.svg)](https://livekit.io/)
+[![LiveKit](https://img.shields.io/badge/LiveKit-0.12.0-ff69b4.svg)](https://livekit.io/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Jashinck/Skylark/pulls)
 
 </div>
@@ -106,7 +106,7 @@
 │  ├── vosk 0.3.45                    (离线语音识别 ASR)        │
 │  ├── onnxruntime 1.16.3             (Silero VAD 推理)         │
 │  ├── kurento-client 6.18.0          (WebRTC 媒体服务器)       │
-│  ├── livekit-server 0.12.0          (LiveKit 实时通信)        │
+│  ├── livekit-server 0.12.0          (LiveKit 云原生通信)      │
 │  ├── jackson-databind / yaml        (JSON/YAML 解析)          │
 │  ├── logback-classic                (日志框架)                │
 │  └── lombok                         (代码简化)                │
@@ -177,7 +177,7 @@ skylark/
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `POST` | `/api/webrtc/livekit/session` | 创建 LiveKit 会话，返回 Token 和服务器 URL |
+| `POST` | `/api/webrtc/livekit/session` | 创建 LiveKit 会话（返回 Token + URL） |
 | `DELETE` | `/api/webrtc/livekit/session/{id}` | 关闭会话，删除房间 |
 
 ---
@@ -771,7 +771,7 @@ webrtc:
 | 适合场景 | AI 语音/视频管道 | 视频会议室 | 大规模直播 / 低延迟通信 |
 | **云雀集成状态** | **✅ 已集成** | — | **✅ 已集成** |
 
-> 💡 OpenVidu v3 已从 Kurento 底层迁移至 LiveKit，但 Kurento 在**服务端媒体处理**（滤镜、转码、AI 管道）领域仍然是最佳选择。云雀同时集成了 Kurento 和 LiveKit 两种方案 — Kurento 用于需要服务端音频处理（VAD/ASR）的场景，LiveKit 用于需要低延迟高并发的实时通信场景。通过可插拔的 `WebRTCChannelStrategy` 策略模式，两种方案可自由切换。
+> 💡 OpenVidu v3 已从 Kurento 底层迁移至 LiveKit，但 Kurento 在**服务端媒体处理**（滤镜、转码、AI 管道）领域仍然是最佳选择。云雀同时集成了 Kurento 和 LiveKit 两种方案 — Kurento 用于需要服务端音频处理（VAD/ASR）的场景，LiveKit 用于需要低延迟高并发的云原生通信场景。通过可插拔的 `WebRTCChannelStrategy` 策略模式，两种方案可自由切换。
 
 ---
 
@@ -845,7 +845,7 @@ Kurento Media Server 的引入为云雀项目带来了**质的飞跃**：
 
 Kurento 不仅是一个技术组件的引入，更是云雀从"语音交互 Demo"向"**生产级智能语音平台**"演进的关键一步。
 
-同时，随着 **LiveKit Server** 的集成（通过 `livekit-server 0.12.0` SDK），云雀现已具备更加灵活的 WebRTC 方案选择。通过可插拔的 `WebRTCChannelStrategy` 策略模式，Kurento（服务端媒体处理）和 LiveKit（低延迟高并发通信）两种方案可根据业务场景自由切换，为不同需求提供最优解。
+同时，随着 **LiveKit Server** 的集成（通过 `livekit-server 0.12.0` SDK），云雀现已具备更加灵活的 WebRTC 方案选择。通过可插拔的 `WebRTCChannelStrategy` 策略模式，Kurento（服务端媒体处理）和 LiveKit（云原生低延迟通信）两种方案可根据业务场景自由切换，为不同需求提供最优解。详细的双框架技术分析请参考 [WebRTC 双框架技术博客](./WEBRTC_FRAMEWORKS_BLOG.md)。
 
 ---
 
