@@ -45,6 +45,25 @@ llm:
   api_key: your-api-key-here
 ```
 
+#### WebRTC 策略配置 (WebRTC Strategy Configuration)
+
+根据需要选择 WebRTC 策略：
+
+```yaml
+webrtc:
+  strategy: livekit  # 可选: websocket, kurento, livekit
+
+  # Kurento 配置
+  kurento:
+    ws-uri: ws://localhost:8888/kurento
+
+  # LiveKit 配置
+  livekit:
+    url: ws://localhost:7880
+    api-key: your-api-key
+    api-secret: your-api-secret
+```
+
 ### 3. 启动服务 (Start Service)
 
 ```bash

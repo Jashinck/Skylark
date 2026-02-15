@@ -344,6 +344,20 @@ sudo tail -f /var/log/kurento-media-server/media-server.log
 - [WebRTC 规范](https://www.w3.org/TR/webrtc/)
 - [Kurento GitHub](https://github.com/Kurento)
 - [Spring Boot WebRTC](https://spring.io/guides/gs/messaging-stomp-websocket/)
+- [LiveKit 官方文档](https://docs.livekit.io/) — 云雀同时支持 LiveKit 作为替代 WebRTC 方案
+- [WebRTC 双框架技术博客](./WEBRTC_FRAMEWORKS_BLOG.md) — Kurento + LiveKit 双框架技术分析
+
+## 相关方案 (Alternative Solutions)
+
+云雀通过可插拔的 `WebRTCChannelStrategy` 策略模式，支持多种 WebRTC 方案：
+
+| 策略 | 配置值 | 说明 |
+|------|--------|------|
+| WebSocket | `websocket` | 基于 WebSocket 的基础方案 |
+| **Kurento** | `kurento` | **本文档描述的专业媒体服务器方案** |
+| LiveKit | `livekit` | 云原生实时通信方案 |
+
+切换方式：修改 `application.yaml` 中的 `webrtc.strategy` 配置项。
 
 ## 许可证 (License)
 

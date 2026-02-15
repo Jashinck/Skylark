@@ -36,6 +36,7 @@ AI实时互动技术是指利用人工智能技术，实现人与机器之间的
 🔧 **灵活配置** - 支持直接调用或HTTP服务模式  
 🌐 **云原生友好** - 适配容器化和微服务架构  
 📦 **企业级设计** - 采用DDD分层架构，清晰的职责分离  
+🔌 **可插拔 WebRTC** - 支持 WebSocket / Kurento / LiveKit 三种实时通信策略  
 
 ---
 
@@ -281,11 +282,39 @@ curl -X POST http://localhost:8080/tts \
 
 ---
 
-## 🔮 未来规划：拥抱RTC-PAAS生态
+## 🔮 RTC 能力现状与未来规划
 
-在当前已实现VAD、ASR、TTS、LLM完整编排能力的基础上，云雀项目的下一步重点是：
+在当前已实现VAD、ASR、TTS、LLM完整编排能力的基础上，云雀已完成多种 WebRTC 方案的集成：
 
-### 🎯 适配主流RTC-PAAS厂商
+### ✅ 已实现的 RTC 能力
+
+#### 1. 基础 WebSocket 方案
+- 基于 WebSocket 的信令与音频传输
+- 适合快速原型验证和简单场景
+
+#### 2. Kurento Media Server 集成
+- 开源免费的专业媒体服务器
+- 服务端媒体管道编排，支持录制、转码、混音
+- 标准 WebRTC 协议，NAT 穿透能力强
+- 通过 `kurento-client 6.18.0` Java SDK 集成
+
+#### 3. 🆕 LiveKit Server 集成
+- 基于 Go 语言构建的现代化高性能云原生媒体服务器
+- 房间管理与 JWT Token 鉴权
+- 自适应码率传输，低延迟通信
+- 通过 `livekit-server 0.12.0` Java SDK 集成
+- 客户端使用 `livekit-client 2.6.4` SDK
+
+#### 可插拔 WebRTC 策略架构
+
+云雀通过 **WebRTCChannelStrategy** 接口实现可插拔的 WebRTC 方案切换，只需修改配置即可切换：
+
+```yaml
+webrtc:
+  strategy: livekit  # 可选: websocket, kurento, livekit
+```
+
+### 🎯 下一步：适配主流RTC-PAAS厂商
 
 我们计划陆续适配以下主流实时音视频平台：
 
@@ -311,7 +340,7 @@ curl -X POST http://localhost:8080/tts \
 
 ### 🚀 RTC集成带来的能力升级
 
-通过RTC-PAAS集成，云雀将获得：
+通过已完成的 Kurento 和 LiveKit 集成，以及未来 RTC-PAAS 适配，云雀将获得：
 
 1. **实时音视频通信**
    - 支持多人语音会议
@@ -336,6 +365,12 @@ curl -X POST http://localhost:8080/tts \
 ### 📋 实现路线图
 
 ```
+✅ 已完成: 基础 WebSocket WebRTC 方案
+    ↓
+✅ 已完成: Kurento Media Server 集成
+    ↓
+✅ 已完成: LiveKit Server 集成 + 可插拔策略架构
+    ↓
 Q2 2026: 声网Agora SDK集成
     ↓
 Q3 2026: 腾讯云TRTC适配
@@ -418,8 +453,8 @@ Vosk支持流式识别，带来的优势：
 - **项目名称**: 云雀 (Skylark) - 智能语音交互代理系统
 - **开源协议**: Apache License 2.0
 - **GitHub**: https://github.com/Jashinck/Skylark
-- **技术栈**: Java 17 + Spring Boot 3.2.0 + Vosk + MaryTTS + Silero VAD + Kurento
-- **核心能力**: VAD + ASR + LLM + TTS + WebRTC 完整编排
+- **技术栈**: Java 17 + Spring Boot 3.2.0 + Vosk + MaryTTS + Silero VAD + Kurento + LiveKit
+- **核心能力**: VAD + ASR + LLM + TTS + WebRTC (WebSocket / Kurento / LiveKit) 完整编排
 - **文档**: 详见仓库README.md、ARCHITECTURE.md、WEBRTC_GUIDE.md、KURENTO_INTEGRATION.md
 
 ### 🌟 为什么要参与云雀开源项目？
@@ -517,7 +552,7 @@ Vosk支持流式识别，带来的优势：
 
 AI实时互动技术正在改变我们与机器交互的方式。云雀(Skylark)项目的目标，就是让开发者能够轻松构建高质量的语音交互应用，让AI技术真正惠及每一个人。
 
-从VAD到ASR，从TTS到LLM，我们已经构建了完整的技术栈。接下来，通过适配主流RTC-PAAS厂商，云雀将支持更大规模、更复杂的实时音视频交互场景。
+从VAD到ASR，从TTS到LLM，我们已经构建了完整的技术栈。通过集成 Kurento 和 LiveKit 两大 WebRTC 方案，云雀已经具备了专业级的实时音视频通信能力。接下来，通过适配主流RTC-PAAS厂商，云雀将支持更大规模、更复杂的实时音视频交互场景。
 
 ### 🌟 开源的力量
 
@@ -538,7 +573,7 @@ AI实时互动技术正在改变我们与机器交互的方式。云雀(Skylark)
 
 ## 🏷️ 标签
 
-`#AI` `#语音识别` `#语音合成` `#实时互动` `#开源项目` `#Java` `#SpringBoot` `#VAD` `#ASR` `#TTS` `#LLM` `#RTC` `#Vosk` `#云原生` `#微服务` `#DDD` `#企业架构` `#WebRTC` `#Kurento`
+`#AI` `#语音识别` `#语音合成` `#实时互动` `#开源项目` `#Java` `#SpringBoot` `#VAD` `#ASR` `#TTS` `#LLM` `#RTC` `#Vosk` `#云原生` `#微服务` `#DDD` `#企业架构` `#WebRTC` `#Kurento` `#LiveKit`
 
 ---
 

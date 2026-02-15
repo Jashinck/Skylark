@@ -2,9 +2,15 @@
 
 ## 概述 (Overview)
 
-云雀 (Skylark) 现已集成 WebRTC 实时语音通信能力，支持完整的 VAD→ASR→LLM→TTS 编排流程。
+云雀 (Skylark) 现已集成多种 WebRTC 实时语音通信方案，支持完整的 VAD→ASR→LLM→TTS 编排流程。通过可插拔的 **WebRTCChannelStrategy** 策略模式，支持以下三种 WebRTC 方案：
 
-Skylark now integrates WebRTC real-time voice communication capabilities, supporting the complete VAD→ASR→LLM→TTS orchestration pipeline.
+| 策略 | 配置值 | 说明 |
+|------|--------|------|
+| WebSocket | `websocket` | 基于 WebSocket 的基础音频传输方案 |
+| Kurento | `kurento` | 基于 Kurento Media Server 的专业媒体服务器方案 |
+| LiveKit | `livekit` | 基于 LiveKit Server 的云原生实时通信方案 |
+
+Skylark now integrates multiple WebRTC real-time voice communication solutions, supporting the complete VAD→ASR→LLM→TTS orchestration pipeline. Through the pluggable **WebRTCChannelStrategy** pattern, three WebRTC strategies are supported: WebSocket, Kurento, and LiveKit.
 
 ## 架构 (Architecture)
 
@@ -352,6 +358,59 @@ protected void handleTextMessage(WebSocketSession session, TextMessage message)
 protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message)
 public void afterConnectionEstablished(WebSocketSession session)
 public void afterConnectionClosed(WebSocketSession session, CloseStatus status)
+```
+
+## LiveKit 集成 (LiveKit Integration)
+
+### 概述
+
+LiveKit 是一个基于 Go 语言构建的云原生开源 WebRTC 媒体服务器，云雀通过 `LiveKitChannelStrategy` 实现了 LiveKit 的集成。
+
+### 配置
+
+```yaml
+webrtc:
+  strategy: livekit
+  livekit:
+    url: ws://localhost:7880
+    api-key: your-api-key
+    api-secret: your-api-secret
+```
+
+### API 端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/api/webrtc/livekit/session` | 创建 LiveKit 会话（返回 Token + URL） |
+| `DELETE` | `/api/webrtc/livekit/session/{id}` | 关闭会话，删除房间 |
+
+### 客户端
+
+访问 `http://localhost:8080/livekit-demo.html` 使用 LiveKit 演示页面。
+
+客户端使用 `livekit-client 2.6.4` SDK，支持：
+- 自动重连 (指数退避，最多 3 次重试)
+- 回声消除、噪声抑制、自动增益控制
+- 远程音频自动播放
+- 连接状态回调
+
+### 快速启动 LiveKit Server
+
+```bash
+docker run -d --name livekit \
+  -p 7880:7880 -p 7881:7881 -p 7882:7882/udp \
+  livekit/livekit-server --dev --bind 0.0.0.0
+```
+
+详细文档请参考：[LiveKit 官方文档](https://docs.livekit.io/) | [WebRTC 双框架技术博客](./WEBRTC_FRAMEWORKS_BLOG.md)
+
+## 策略切换 (Strategy Switching)
+
+通过修改 `webrtc.strategy` 配置值，可在 WebSocket、Kurento、LiveKit 三种方案间自由切换：
+
+```yaml
+webrtc:
+  strategy: livekit  # 可选: websocket, kurento, livekit
 ```
 
 ## 贡献 (Contributing)
