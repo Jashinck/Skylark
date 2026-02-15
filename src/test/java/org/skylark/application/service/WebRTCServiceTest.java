@@ -11,6 +11,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.skylark.infrastructure.adapter.webrtc.AudioProcessor;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.WebRTCSession;
+import org.skylark.infrastructure.adapter.webrtc.strategy.KurentoChannelStrategy;
+import org.skylark.infrastructure.adapter.webrtc.strategy.WebRTCChannelStrategy;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,7 +53,8 @@ class WebRTCServiceTest {
     
     @BeforeEach
     void setUp() {
-        webRTCService = new WebRTCService(kurentoClient, vadService, asrService, ttsService);
+        WebRTCChannelStrategy kurentoStrategy = new KurentoChannelStrategy(kurentoClient);
+        webRTCService = new WebRTCService(kurentoClient, vadService, asrService, ttsService, kurentoStrategy);
     }
     
     @Test

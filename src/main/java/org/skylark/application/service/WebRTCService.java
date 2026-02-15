@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.skylark.infrastructure.adapter.webrtc.AudioProcessor;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.WebRTCSession;
+import org.skylark.infrastructure.adapter.webrtc.strategy.WebRTCChannelStrategy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,8 +19,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * WebRTC Service
  * WebRTC 服务
  * 
- * <p>Manages WebRTC sessions using Kurento Media Server and integrates
- * with the VAD-ASR-LLM-TTS pipeline for real-time voice interaction.</p>
+ * <p>Manages WebRTC sessions using pluggable channel strategies (WebSocket, Kurento, LiveKit).
+ * Integrates with the VAD-ASR-LLM-TTS pipeline for real-time voice interaction.</p>
+ * 
+ * <p>The active strategy is selected via {@code webrtc.strategy} configuration property.</p>
  * 
  * @author Skylark Team
  * @version 1.0.0
@@ -33,6 +36,7 @@ public class WebRTCService {
     private final VADService vadService;
     private final ASRService asrService;
     private final TTSService ttsService;
+    private final WebRTCChannelStrategy channelStrategy;
     
     private final ConcurrentHashMap<String, WebRTCSession> sessions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, AudioProcessor> audioProcessors = new ConcurrentHashMap<>();
@@ -42,45 +46,34 @@ public class WebRTCService {
         KurentoClientAdapter kurentoClient,
         VADService vadService,
         ASRService asrService,
-        TTSService ttsService
+        TTSService ttsService,
+        WebRTCChannelStrategy channelStrategy
     ) {
         this.kurentoClient = kurentoClient;
         this.vadService = vadService;
         this.asrService = asrService;
         this.ttsService = ttsService;
+        this.channelStrategy = channelStrategy;
+        logger.info("WebRTCService initialized with strategy: {}", channelStrategy.getStrategyName());
     }
     
     /**
-     * Creates a new WebRTC session
-     * 创建新的 WebRTC 会话
+     * Creates a new WebRTC session using the active channel strategy
+     * 使用活动通道策略创建新的 WebRTC 会话
      * 
      * @param userId User identifier
      * @return Session ID
      */
     public String createSession(String userId) {
         try {
-            String sessionId = UUID.randomUUID().toString();
-            logger.info("Creating WebRTC session for user: {}, sessionId: {}", userId, sessionId);
-            
-            // Create media pipeline
-            MediaPipeline pipeline = kurentoClient.createMediaPipeline();
-            logger.debug("Media pipeline created for session: {}", sessionId);
-            
-            // Create WebRTC endpoint
-            WebRtcEndpoint webRtcEndpoint = kurentoClient.createWebRTCEndpoint(pipeline);
-            logger.debug("WebRTC endpoint created for session: {}", sessionId);
+            String sessionId = channelStrategy.createSession(userId);
+            logger.info("Session created via {} strategy: {}", channelStrategy.getStrategyName(), sessionId);
             
             // Create audio processor for VAD/ASR integration
             AudioProcessor audioProcessor = new AudioProcessor(vadService, asrService, sessionId);
             audioProcessors.put(sessionId, audioProcessor);
             
-            // Create WebRTC session
-            WebRTCSession session = new WebRTCSession(sessionId, pipeline, webRtcEndpoint);
-            sessions.put(sessionId, session);
-            
-            logger.info("✅ WebRTC session created successfully: {}", sessionId);
             return sessionId;
-            
         } catch (Exception e) {
             logger.error("Failed to create WebRTC session for user: {}", userId, e);
             throw new RuntimeException("Failed to create WebRTC session", e);
@@ -88,31 +81,22 @@ public class WebRTCService {
     }
     
     /**
-     * Processes SDP offer from client
-     * 处理来自客户端的 SDP offer
+     * Processes SDP offer from client using the active channel strategy
+     * 使用活动通道策略处理来自客户端的 SDP offer
      * 
      * @param sessionId Session identifier
      * @param sdpOffer SDP offer from client
-     * @return SDP answer
+     * @return SDP answer or connection info
      */
     public String processOffer(String sessionId, String sdpOffer) {
-        WebRTCSession session = sessions.get(sessionId);
-        if (session == null) {
-            throw new IllegalArgumentException("Session not found: " + sessionId);
-        }
-        
         try {
-            logger.debug("Processing SDP offer for session: {}", sessionId);
-            
-            // Process offer and get answer
-            String sdpAnswer = session.processOffer(sdpOffer);
-            
-            // Start gathering ICE candidates
-            session.gatherCandidates();
-            
+            logger.debug("Processing SDP offer for session: {} via {} strategy",
+                sessionId, channelStrategy.getStrategyName());
+            String result = channelStrategy.processOffer(sessionId, sdpOffer);
             logger.info("SDP offer processed successfully for session: {}", sessionId);
-            return sdpAnswer;
-            
+            return result;
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             logger.error("Failed to process SDP offer for session: {}", sessionId, e);
             throw new RuntimeException("Failed to process SDP offer", e);
@@ -120,8 +104,8 @@ public class WebRTCService {
     }
     
     /**
-     * Adds ICE candidate to session
-     * 向会话添加 ICE candidate
+     * Adds ICE candidate to session via the active channel strategy
+     * 通过活动通道策略向会话添加 ICE candidate
      * 
      * @param sessionId Session identifier
      * @param candidate ICE candidate string
@@ -129,15 +113,8 @@ public class WebRTCService {
      * @param sdpMLineIndex SDP media line index
      */
     public void addIceCandidate(String sessionId, String candidate, String sdpMid, int sdpMLineIndex) {
-        WebRTCSession session = sessions.get(sessionId);
-        if (session == null) {
-            logger.warn("Session not found for ICE candidate: {}", sessionId);
-            return;
-        }
-        
         try {
-            IceCandidate iceCandidate = new IceCandidate(candidate, sdpMid, sdpMLineIndex);
-            session.addIceCandidate(iceCandidate);
+            channelStrategy.addIceCandidate(sessionId, candidate, sdpMid, sdpMLineIndex);
             logger.debug("ICE candidate added for session: {}", sessionId);
         } catch (Exception e) {
             logger.error("Failed to add ICE candidate for session: {}", sessionId, e);
@@ -191,19 +168,15 @@ public class WebRTCService {
     }
     
     /**
-     * Closes a WebRTC session
-     * 关闭 WebRTC 会话
+     * Closes a WebRTC session via the active channel strategy
+     * 通过活动通道策略关闭 WebRTC 会话
      * 
      * @param sessionId Session identifier
      */
     public void closeSession(String sessionId) {
         try {
-            // Remove and release WebRTC session
-            WebRTCSession session = sessions.remove(sessionId);
-            if (session != null) {
-                session.release();
-                logger.info("WebRTC session closed: {}", sessionId);
-            }
+            // Close session via strategy
+            channelStrategy.closeSession(sessionId);
             
             // Remove audio processor
             AudioProcessor processor = audioProcessors.remove(sessionId);
@@ -215,20 +188,20 @@ public class WebRTCService {
             // Clean up VAD state
             vadService.reset(sessionId);
             
+            logger.info("WebRTC session closed: {}", sessionId);
         } catch (Exception e) {
             logger.error("Error closing session: {}", sessionId, e);
         }
     }
     
     /**
-     * Gets a WebRTC session
-     * 获取 WebRTC 会话
+     * Gets the active WebRTC channel strategy
+     * 获取活动的 WebRTC 通道策略
      * 
-     * @param sessionId Session identifier
-     * @return WebRTC session or null if not found
+     * @return Active channel strategy
      */
-    public WebRTCSession getSession(String sessionId) {
-        return sessions.get(sessionId);
+    public WebRTCChannelStrategy getChannelStrategy() {
+        return channelStrategy;
     }
     
     /**
@@ -239,7 +212,7 @@ public class WebRTCService {
      * @return true if session exists
      */
     public boolean sessionExists(String sessionId) {
-        return sessions.containsKey(sessionId);
+        return channelStrategy.sessionExists(sessionId);
     }
     
     /**
@@ -249,6 +222,6 @@ public class WebRTCService {
      * @return Number of active sessions
      */
     public int getActiveSessionCount() {
-        return sessions.size();
+        return channelStrategy.getActiveSessionCount();
     }
 }
