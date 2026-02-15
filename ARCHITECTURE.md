@@ -61,10 +61,14 @@ Skylark采用标准的企业级SpringBoot DDD（领域驱动设计）分层架�
 │  │  - TTS Adapters (Direct/HTTP)                      │     │
 │  │  - VAD Adapters (Direct/HTTP)                      │     │
 │  │  - LLM Adapters (Ollama/OpenAI)                    │     │
+│  │  - WebRTC Adapters (Kurento/LiveKit)               │     │
+│  │  - WebRTC Strategy (WebSocket/Kurento/LiveKit)     │     │
 │  └────────────────────────────────────────────────────┘     │
 │  ┌────────────────────────────────────────────────────┐     │
 │  │  配置 (Configuration)                               │     │
 │  │  - ComponentFactoryConfig                          │     │
+│  │  - WebRTCStrategyConfig                            │     │
+│  │  - WebRTCProperties                                │     │
 │  └────────────────────────────────────────────────────┘     │
 └──────────────┬────────────────┬─────────────────┬───────────┘
                │                │                 │
@@ -73,6 +77,12 @@ Skylark采用标准的企业级SpringBoot DDD（领域驱动设计）分层架�
       │    Vosk      │  │   MaryTTS    │  │ Silero VAD   │
       │   (ASR)      │  │   (TTS)      │  │   (VAD)      │
       └──────────────┘  └──────────────┘  └──────────────┘
+               │                │
+               ↓                ↓
+      ┌──────────────┐  ┌──────────────┐
+      │   Kurento    │  │   LiveKit    │
+      │  Media Server│  │   Server     │
+      └──────────────┘  └──────────────┘
 ```
 
 ## 分层说明 (Layer Description)
@@ -146,8 +156,17 @@ public class ASRController {
   - `Http*Adapter`: HTTP远程调用实现
   - `LLM`: 大语言模型接口
   - `OllamaLLM`, `OpenAILLM`: LLM实现
+  - `webrtc/`: WebRTC 适配器
+    - `KurentoClientAdapter`: Kurento 媒体服务器适配器
+    - `LiveKitClientAdapter`: LiveKit 服务器适配器
+    - `strategy/WebRTCChannelStrategy`: 可插拔 WebRTC 策略接口
+    - `strategy/LiveKitChannelStrategy`: LiveKit 策略实现
+    - `strategy/KurentoChannelStrategy`: Kurento 策略实现
+    - `strategy/WebSocketChannelStrategy`: WebSocket 策略实现
 - `config/`: 配置类
   - `ComponentFactoryConfig`: 组件工厂配置
+  - `WebRTCStrategyConfig`: WebRTC 策略工厂配置
+  - `WebRTCProperties`: WebRTC 配置属性 (Kurento/LiveKit/STUN/TURN)
 
 **特点**:
 - 实现技术细节
@@ -178,11 +197,24 @@ ASR (接口)
   └── HttpASRAdapter (HTTP调用)
 ```
 
-### 2. 工厂模式 (Factory Pattern)
+### 2. 策略模式 (Strategy Pattern)
+
+用于可插拔的 WebRTC 通信方案切换：
+
+```
+WebRTCChannelStrategy (接口)
+  ├── WebSocketChannelStrategy (WebSocket 方案)
+  ├── KurentoChannelStrategy (Kurento 媒体服务器方案)
+  └── LiveKitChannelStrategy (LiveKit 实时通信方案)
+```
+
+通过 `webrtc.strategy` 配置项动态选择策略实现。
+
+### 3. 工厂模式 (Factory Pattern)
 
 `ComponentFactory` 负责根据配置动态创建组件。
 
-### 3. 依赖注入 (Dependency Injection)
+### 4. 依赖注入 (Dependency Injection)
 
 使用Spring的 `@Autowired` 实现松耦合。
 
@@ -228,6 +260,7 @@ API层 → 应用层 → 领域层
 - **TTS**: MaryTTS 5.2 (可选)
 - **VAD**: Silero VAD (ONNX Runtime 1.16.3)
 - **LLM**: Ollama / OpenAI API
+- **WebRTC**: Kurento Client 6.18.0 / LiveKit Server SDK 0.12.0
 - **构建**: Maven
 
 ## 最佳实践 (Best Practices)
@@ -254,5 +287,5 @@ API层 → 应用层 → 领域层
 
 ---
 
-**更新时间**: 2026-02-02  
-**架构版本**: 1.0.0 (DDD分层架构)
+**更新时间**: 2026-02-15  
+**架构版本**: 1.1.0 (DDD分层架构 + WebRTC 策略模式)

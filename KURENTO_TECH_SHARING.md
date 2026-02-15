@@ -14,6 +14,7 @@
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Kurento](https://img.shields.io/badge/Kurento-6.18.0-blueviolet.svg)](https://kurento.openvidu.io/)
+[![LiveKit](https://img.shields.io/badge/LiveKit-0.12.0-ff6600.svg)](https://livekit.io/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Jashinck/Skylark/pulls)
 
 </div>
@@ -105,13 +106,16 @@
 │  ├── vosk 0.3.45                    (离线语音识别 ASR)        │
 │  ├── onnxruntime 1.16.3             (Silero VAD 推理)         │
 │  ├── kurento-client 6.18.0          (WebRTC 媒体服务器)       │
+│  ├── livekit-server 0.12.0          (LiveKit 实时通信)        │
 │  ├── jackson-databind / yaml        (JSON/YAML 解析)          │
 │  ├── logback-classic                (日志框架)                │
 │  └── lombok                         (代码简化)                │
 ├───────────────────────────────────────────────────────────────┤
 │  外部服务:                                                     │
-│  └── Kurento Media Server (Docker / Native)                   │
-│      ws://localhost:8888/kurento                              │
+│  ├── Kurento Media Server (Docker / Native)                   │
+│  │   ws://localhost:8888/kurento                              │
+│  └── LiveKit Server (Docker)                                  │
+│      ws://localhost:7880                                      │
 └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -129,8 +133,8 @@ skylark/
 │   │   ├── model/                      #     Dialogue, Message
 │   │   └── service/                    #     领域服务接口
 │   ├── infrastructure/                 # ⚙️ 基础设施层
-│   │   ├── adapter/                    #     KurentoClientAdapter, WebRTCSession, AudioProcessor
-│   │   └── config/                     #     WebRTCProperties, Spring 配置
+│   │   ├── adapter/                    #     KurentoClientAdapter, LiveKitClientAdapter, WebRTCSession, AudioProcessor
+│   │   └── config/                     #     WebRTCProperties, WebRTCStrategyConfig, Spring 配置
 │   └── common/                         # 🔧 公共层
 │       ├── constant/                   #     常量定义
 │       ├── exception/                  #     异常处理
@@ -144,7 +148,9 @@ skylark/
 │       └── config/                     #     WebRTCPropertiesTest
 ├── web/                                # 🖥️ 前端
 │   ├── js/kurento-webrtc.js           #     Kurento WebRTC 客户端 (418 行)
+│   ├── js/livekit-webrtc.js           #     LiveKit WebRTC 客户端
 │   ├── kurento-demo.html              #     Kurento 演示页面
+│   ├── livekit-demo.html              #     LiveKit 演示页面
 │   └── webrtc.html                    #     WebSocket WebRTC 页面
 ├── config/                             # ⚙️ 配置
 │   ├── config-java-only.yaml          #     纯 Java 模式配置
@@ -158,12 +164,21 @@ skylark/
 
 ### 2.3 API 端点一览
 
+**Kurento 端点：**
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | `POST` | `/api/webrtc/kurento/session` | 创建 Kurento WebRTC 会话 |
 | `POST` | `/api/webrtc/kurento/session/{id}/offer` | 处理 SDP Offer，返回 SDP Answer |
 | `POST` | `/api/webrtc/kurento/session/{id}/ice-candidate` | 添加 ICE Candidate |
 | `DELETE` | `/api/webrtc/kurento/session/{id}` | 关闭会话，释放资源 |
+
+**LiveKit 端点：**
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/api/webrtc/livekit/session` | 创建 LiveKit 会话，返回 Token 和服务器 URL |
+| `DELETE` | `/api/webrtc/livekit/session/{id}` | 关闭会话，删除房间 |
 
 ---
 
@@ -751,12 +766,12 @@ webrtc:
 |------|---------|-------------|---------|
 | 定位 | 底层媒体服务器 | 平台级封装 | 现代 SFU |
 | 媒体处理 | ✅ Pipeline 模型 | ⚠️ 依赖 Kurento/LiveKit | ❌ 纯路由 |
-| Java SDK | ✅ 原生支持 | ✅ 支持 | ⚠️ Go/JS 为主 |
+| Java SDK | ✅ 原生支持 | ✅ 支持 | ✅ livekit-server 0.12.0 |
 | 滤镜/转码 | ✅ GStreamer | ⚠️ 有限 | ❌ 无 |
-| 适合场景 | AI 语音/视频管道 | 视频会议室 | 大规模直播 |
-| **云雀选择理由** | **✅ 服务端音频处理 + Java 原生 + Pipeline 自由组合** | | |
+| 适合场景 | AI 语音/视频管道 | 视频会议室 | 大规模直播 / 低延迟通信 |
+| **云雀集成状态** | **✅ 已集成** | — | **✅ 已集成** |
 
-> 💡 OpenVidu v3 已从 Kurento 底层迁移至 LiveKit，但 Kurento 在**服务端媒体处理**（滤镜、转码、AI 管道）领域仍然是最佳选择。这正是云雀选择 Kurento 的核心原因 — 我们需要在服务端对音频流做 VAD/ASR 处理，而非简单的媒体路由。
+> 💡 OpenVidu v3 已从 Kurento 底层迁移至 LiveKit，但 Kurento 在**服务端媒体处理**（滤镜、转码、AI 管道）领域仍然是最佳选择。云雀同时集成了 Kurento 和 LiveKit 两种方案 — Kurento 用于需要服务端音频处理（VAD/ASR）的场景，LiveKit 用于需要低延迟高并发的实时通信场景。通过可插拔的 `WebRTCChannelStrategy` 策略模式，两种方案可自由切换。
 
 ---
 
@@ -801,6 +816,8 @@ webrtc:
 - [x] TURN 服务器集成的完整配置化（`WebRTCProperties.Turn` 支持 enabled/server/username/password/transport，自动拼装 TURN URL）
 - [x] Kurento 连接健康检查和自动重连（`@Scheduled` 每 30 秒心跳探测 + 指数退避重连 1s → 60s）
 - [x] 前端 WebRTC 连接断开重试机制（`KurentoWebRTCClient.handleConnectionFailure()` 最多 3 次 × 1.5 倍退避自动重连）
+- [x] **LiveKit Server 集成** — 通过 `livekit-server 0.12.0` SDK 实现房间管理、Token 鉴权，客户端使用 `livekit-client 2.6.4` SDK
+- [x] **可插拔 WebRTC 策略架构** — `WebRTCChannelStrategy` 接口 + `WebRTCStrategyConfig` 工厂，支持 WebSocket / Kurento / LiveKit 三种策略自由切换
 
 **待完成 🔧**
 
@@ -827,6 +844,8 @@ Kurento Media Server 的引入为云雀项目带来了**质的飞跃**：
 | 5 | **生产级健壮性** | 自动重连、健康检查、优雅降级、多层资源清理 |
 
 Kurento 不仅是一个技术组件的引入，更是云雀从"语音交互 Demo"向"**生产级智能语音平台**"演进的关键一步。
+
+同时，随着 **LiveKit Server** 的集成（通过 `livekit-server 0.12.0` SDK），云雀现已具备更加灵活的 WebRTC 方案选择。通过可插拔的 `WebRTCChannelStrategy` 策略模式，Kurento（服务端媒体处理）和 LiveKit（低延迟高并发通信）两种方案可根据业务场景自由切换，为不同需求提供最优解。
 
 ---
 
