@@ -10,6 +10,7 @@
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Kurento](https://img.shields.io/badge/Kurento-6.18.0-blueviolet.svg)](https://kurento.openvidu.io/)
+[![LiveKit](https://img.shields.io/badge/LiveKit-0.12.0-ff69b4.svg)](https://livekit.io/)
 
 ---
 
@@ -29,6 +30,7 @@
 🌐 **云原生友好** - 适配容器化和微服务架构  
 🎙️ **WebRTC集成** - 实时语音通信，VAD→ASR→LLM→TTS完整编排  
 📞 **Kurento 媒体服务** - 基于 Kurento Media Server 的专业 WebRTC 解决方案，提供服务端媒体处理、管道编排、会话管理与智能语音交互  
+🚀 **LiveKit 云原生** - 基于 LiveKit 的轻量级云原生 WebRTC 方案，Token 鉴权即用，Room 模型天然支持多人场景  
 
 ---
 
@@ -117,7 +119,9 @@ docker-compose up -d
 - **MaryTTS 5.2** - 文本转语音
 - **ONNX Runtime 1.16.3** - Silero VAD 语音活动检测
 - **Kurento Client 6.18.0** - WebRTC 媒体服务器客户端
+- **LiveKit Server SDK 0.12.0** - 云原生 WebRTC 服务端 SDK
 - **kurento-utils (CDN)** - 前端 WebRTC Peer 管理
+- **livekit-client (CDN v2.6.4)** - 前端 LiveKit 客户端 SDK
 
 ### 实现状态 (Implementation Status)
 
@@ -125,6 +129,7 @@ docker-compose up -d
 ⚠️ **TTS (文本转语音)** - 已准备 MaryTTS 集成（需手动安装）  
 ✅ **VAD (语音活动检测)** - 已集成 Silero VAD (ONNX Runtime)  
 ✅ **Kurento WebRTC** - 已集成 Kurento Media Server 实现 1v1 实时语音通话  
+✅ **LiveKit WebRTC** - 已集成 LiveKit 实现云原生 WebRTC 实时通话  
 
 所有服务均使用纯 Java 实现，无需 Python 依赖。
 
@@ -241,6 +246,45 @@ webrtc:
 
 详细文档: [Kurento 集成指南](./KURENTO_INTEGRATION.md)
 
+## 🚀 LiveKit 云原生通话 (LiveKit Cloud-Native Voice Call)
+
+云雀现已引入 **LiveKit** 作为云原生 WebRTC 方案，提供轻量级的实时语音接入能力。
+
+Skylark now integrates **LiveKit** as a cloud-native WebRTC solution with lightweight real-time voice access.
+
+### 核心特性
+
+☁️ **云原生架构** - Go 运行时，容器友好，资源占用极低  
+🔑 **Token 鉴权** - JWT Token 即可完成接入，无需复杂 SDP/ICE 手动协商  
+🏠 **Room 模型** - 基于房间的会话管理，天然支持多人场景  
+🔄 **自动重连** - 客户端内建断线重连和连接质量监控  
+
+### 快速开始
+
+```bash
+# 1. 启动 LiveKit Server (Docker)
+docker run -d --name livekit \
+  -p 7880:7880 -p 7881:7881 -p 7882:7882/udp \
+  livekit/livekit-server --dev --bind 0.0.0.0
+
+# 2. 修改 application.yaml 中 webrtc.strategy 为 livekit
+
+# 3. 启动 Skylark 服务
+mvn spring-boot:run
+
+# 4. 访问 LiveKit 演示页面
+http://localhost:8080/livekit-demo.html
+```
+
+### API 端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/api/webrtc/livekit/session` | 创建 LiveKit 会话（返回 Token + URL） |
+| `DELETE` | `/api/webrtc/livekit/session/{id}` | 关闭会话 |
+
+详细文档: [WebRTC 双框架技术博客](./WEBRTC_FRAMEWORKS_BLOG.md)
+
 ## 📁 项目结构 (Project Structure)
 
 ### 企业级DDD分层架构 (Enterprise DDD Layered Architecture)
@@ -260,7 +304,7 @@ skylark/
 │   │   │   ├── model/                  # 领域模型 (Dialogue, Message)
 │   │   │   └── service/                # 领域服务接口
 │   │   ├── infrastructure/             # 基础设施层
-│   │   │   ├── adapter/                # 适配器 (ASR, TTS, VAD, LLM, WebRTC/Kurento)
+│   │   │   ├── adapter/                # 适配器 (ASR, TTS, VAD, LLM, WebRTC/Kurento/LiveKit)
 │   │   │   └── config/                 # Spring配置
 │   │   └── common/                     # 公共层
 │   │       ├── constant/               # 常量定义
@@ -272,19 +316,22 @@ skylark/
 │   └── config.yaml                     # 备用配置
 ├── web/                                 # Web前端
 │   ├── js/kurento-webrtc.js           # Kurento WebRTC 客户端
+│   ├── js/livekit-webrtc.js           # LiveKit WebRTC 客户端
 │   ├── kurento-demo.html              # Kurento 演示页面
+│   ├── livekit-demo.html              # LiveKit 演示页面
 │   └── webrtc.html                    # WebRTC 交互页面
 ├── KURENTO_INTEGRATION.md              # Kurento 集成指南
+├── WEBRTC_FRAMEWORKS_BLOG.md           # WebRTC 双框架技术博客
 ├── WEBRTC_GUIDE.md                     # WebRTC 集成指南
 └── docker-compose.yml                   # Docker编排
 ```
 
 ### 架构说明 (Architecture Description)
 
-- **API层** (`api`): REST API接口，提供对外服务（包含 Kurento WebRTC 端点）
+- **API层** (`api`): REST API接口，提供对外服务（包含 Kurento 和 LiveKit WebRTC 端点）
 - **应用层** (`application`): 业务逻辑编排，服务组合（包含 WebRTCService）
 - **领域层** (`domain`): 核心业务模型和规则
-- **基础设施层** (`infrastructure`): 外部依赖适配，技术实现（包含 Kurento 适配器、WebRTCSession、AudioProcessor）
+- **基础设施层** (`infrastructure`): 外部依赖适配，技术实现（包含 Kurento/LiveKit 适配器、WebRTCSession、AudioProcessor、策略模式）
 - **公共层** (`common`): 通用工具和组件
 
 ---
