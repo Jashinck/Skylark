@@ -10,7 +10,6 @@ services:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - SPRING_PROFILES_ACTIVE=prod
     volumes:
-      - ./config:/app/config
       - ./tmp:/app/tmp
       - ./logs:/app/logs
     restart: unless-stopped

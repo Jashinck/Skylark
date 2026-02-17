@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -35,6 +37,9 @@ import java.util.regex.Pattern;
  * Map&lt;String, Object&gt; config = ConfigReader.readConfig("config/config.yaml");
  * String apiKey = (String) config.get("api_key");
  * </pre>
+ * 
+ * <p>The reader first attempts to load from the filesystem, then falls back
+ * to classpath resources if the file is not found.</p>
  * 
  * @author Skylark Team
  * @version 1.0.0
@@ -78,26 +83,28 @@ public class ConfigReader {
         logger.info("Reading configuration from: {}", configPath);
         
         try {
+            String yamlContent = null;
+            
+            // First try filesystem
             File configFile = new File(configPath);
+            if (configFile.exists() && configFile.isFile() && configFile.canRead()) {
+                logger.debug("Configuration file found on filesystem, size: {} bytes", configFile.length());
+                yamlContent = new String(Files.readAllBytes(Paths.get(configPath)));
+            } else {
+                // Fallback to classpath
+                try (InputStream is = ConfigReader.class.getClassLoader().getResourceAsStream(configPath)) {
+                    if (is != null) {
+                        yamlContent = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                        logger.info("Configuration file loaded from classpath: {}", configPath);
+                    }
+                }
+            }
             
-            if (!configFile.exists()) {
-                logger.warn("Configuration file not found: {}. Using empty configuration.", configPath);
+            if (yamlContent == null) {
+                logger.warn("Configuration file not found on filesystem or classpath: {}. Using empty configuration.", configPath);
                 return new HashMap<>();
             }
             
-            if (!configFile.isFile()) {
-                logger.error("Configuration path exists but is not a file: {}", configPath);
-                return new HashMap<>();
-            }
-            
-            if (!configFile.canRead()) {
-                logger.error("Configuration file exists but cannot be read: {}", configPath);
-                return new HashMap<>();
-            }
-            
-            logger.debug("Configuration file found, size: {} bytes", configFile.length());
-            
-            String yamlContent = new String(Files.readAllBytes(Paths.get(configPath)));
             logger.debug("Read {} characters from configuration file", yamlContent.length());
             
             @SuppressWarnings("unchecked")
