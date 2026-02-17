@@ -19,7 +19,6 @@ vad:
   sampling_rate: 16000
   threshold: 0.5
   min_silence_duration_ms: 500
-  model_path: models/silero_vad.onnx
   frame_duration_ms: 50
 
 # TTS服务 - Java实现 (MaryTTS)

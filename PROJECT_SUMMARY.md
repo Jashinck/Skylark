@@ -109,7 +109,7 @@ docker-compose up -d
 9. `PROJECT_SUMMARY.md` - 本文件
 
 **配置 (1个文件)**:
-10. `config/config-java-only.yaml` - 纯Java模式配置
+10. `src/main/resources/config/config-java-only.yaml` - 纯Java模式配置
 
 ### 修改文件 (Modified Files)
 

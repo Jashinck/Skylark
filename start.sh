@@ -13,7 +13,7 @@ fi
 
 export $(cat .env | grep -v '^#' | xargs)
 
-mkdir -p tmp/asr tmp/tts tmp/vad logs models config
+mkdir -p tmp/asr tmp/tts tmp/vad logs models
 
 echo ""
 echo "🚀 启动服务..."

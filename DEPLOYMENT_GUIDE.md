@@ -30,10 +30,10 @@ After successful build, the `skylark.jar` file will be generated in the `target/
 
 使用纯Java配置文件：
 
-Use the pure Java configuration file:
+Use the pure Java configuration file (copy to an external location for customization):
 
 ```bash
-cp config/config-java-only.yaml config/my-config.yaml
+cp src/main/resources/config/config-java-only.yaml my-config.yaml
 ```
 
 编辑配置文件，设置API密钥：
@@ -43,6 +43,14 @@ Edit the configuration file to set API keys:
 ```yaml
 llm:
   api_key: your-api-key-here
+```
+
+运行时指定外部配置文件：
+
+Run with the external configuration file:
+
+```bash
+java -jar target/skylark.jar my-config.yaml
 ```
 
 #### WebRTC 策略配置 (WebRTC Strategy Configuration)
@@ -174,7 +182,7 @@ WORKDIR /app
 
 # 复制构建产物
 COPY ./target/skylark.jar /app/
-COPY config/ /app/config/
+# 配置文件已打包在JAR中，无需单独复制
 
 # 创建必要的目录
 RUN mkdir -p /app/tmp /app/logs
