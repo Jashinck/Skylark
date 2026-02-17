@@ -157,7 +157,7 @@ skylark/
 │   ├── kurento-demo.html              #     Kurento 演示页面
 │   ├── livekit-demo.html              #     LiveKit 演示页面
 │   └── webrtc.html                    #     WebSocket WebRTC 页面
-├── config/                             # ⚙️ 配置
+├── src/main/resources/config/          # ⚙️ 配置
 │   ├── config-java-only.yaml          #     纯 Java 模式配置
 │   └── config.yaml                    #     默认配置
 ├── pom.xml                            #     Maven 构建配置

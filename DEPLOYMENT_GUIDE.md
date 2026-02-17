@@ -33,7 +33,7 @@ After successful build, the `skylark.jar` file will be generated in the `target/
 Use the pure Java configuration file:
 
 ```bash
-cp config/config-java-only.yaml config/my-config.yaml
+cp src/main/resources/config/config-java-only.yaml src/main/resources/config/my-config.yaml
 ```
 
 编辑配置文件，设置API密钥：
@@ -174,7 +174,7 @@ WORKDIR /app
 
 # 复制构建产物
 COPY ./target/skylark.jar /app/
-COPY config/ /app/config/
+# 配置文件已打包在JAR中，无需单独复制
 
 # 创建必要的目录
 RUN mkdir -p /app/tmp /app/logs

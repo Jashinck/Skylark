@@ -19,8 +19,8 @@ Skylark/
 │   ├── src/main/java/
 │   │   └── com/bailing/       ← 旧包名
 │   ├── pom.xml
+│   ├── src/main/resources/config/
 │   └── JAVA_SERVICES_README.md
-├── config/
 ├── web/
 └── ...
 ```
@@ -31,8 +31,8 @@ Skylark/
 ├── src/main/java/
 │   └── org/skylark/           ← 新包名
 ├── pom.xml                     ← 移至根目录
+├── src/main/resources/config/
 ├── JAVA_SERVICES_README.md    ← 移至根目录
-├── config/
 ├── web/
 └── ...
 ```
