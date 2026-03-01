@@ -17,128 +17,77 @@
 
 ## 📋 目录
 
-- [一、引言：AI Agent 时代的到来](#一引言ai-agent-时代的到来)
-- [二、为什么 Voice-Agent 需要 Agent 框架？](#二为什么-voice-agent-需要-agent-框架)
-- [三、AgentScope 框架介绍](#三agentscope-框架介绍)
-- [四、云雀引入 AgentScope 的背景](#四云雀引入-agentscope-的背景)
-- [五、引入目标与技术选型](#五引入目标与技术选型)
-- [六、技术实现深度解析](#六技术实现深度解析)
-- [七、对云雀项目的核心收益](#七对云雀项目的核心收益)
-- [八、快速上手指南](#八快速上手指南)
-- [九、实战案例：构建智能客服助手](#九实战案例构建智能客服助手)
-- [十、性能优化与最佳实践](#十性能优化与最佳实践)
-- [十一、后续规划与社区共建](#十一后续规划与社区共建)
-- [十二、总结](#十二总结)
+- [一、智能体的觉醒：遇见 AgentScope](#一智能体的觉醒遇见-agentscope)
+- [二、云雀的蜕变：从对话到思考](#二云雀的蜕变从对话到思考)
+- [三、引入目标与技术选型](#三引入目标与技术选型)
+- [四、技术实现深度解析](#四技术实现深度解析)
+- [五、对云雀项目的核心收益](#五对云雀项目的核心收益)
+- [六、快速上手指南](#六快速上手指南)
+- [七、实战案例：构建智能客服助手](#七实战案例构建智能客服助手)
+- [八、性能优化与最佳实践](#八性能优化与最佳实践)
+- [九、后续规划与社区共建](#九后续规划与社区共建)
+- [十、总结](#十总结)
 - [附录：关于云雀开源项目](#附录关于云雀开源项目)
 
 ---
 
-## 一、引言：AI Agent 时代的到来
+## 一、智能体的觉醒：遇见 AgentScope
 
-在 2024-2026 年，人工智能领域正经历一场深刻的范式转变：从**单次问答式交互**转向**自主任务执行式交互**。这种转变的核心载体就是 **AI Agent（智能体）**。
+### 从回声到共鸣：AI 的范式之变
 
-### 什么是 AI Agent？
+时光流转至 2024-2026，人工智能的世界正悄然发生着一场深刻的蜕变。曾经，AI 如同山谷的回声，你问一句，它答一句，简单而机械。如今，它更像是一位善解人意的伙伴，能够倾听、思考、行动，甚至在必要时主动寻找答案。这场从**单次问答**到**自主任务执行**的转变，其核心载体便是 **AI Agent（智能体）**。
 
-AI Agent 不仅仅是一个能回答问题的聊天机器人，而是一个能够：
+AI Agent 不再是冰冷的问答机器，而是一个能够：
+- 🧠 **自主推理** — 如同哲人沉思，通过 ReAct 框架层层递进
+- 🛠️ **调用工具** — 化身行动者，主动调用 API、查询数据、操控系统
+- 💾 **记忆管理** — 如同老友重逢，记得每一次对话的温度
+- 🔄 **迭代优化** — 不达目的不罢休，根据反馈不断调整策略
 
-- 🧠 **自主推理** - 通过 ReAct（Reasoning + Acting）等框架进行多步骤思考
-- 🛠️ **调用工具** - 主动调用外部 API、数据库、搜索引擎等工具完成任务
-- 💾 **记忆管理** - 维护长期对话历史，理解上下文
-- 🔄 **迭代优化** - 根据工具返回结果调整策略，直到完成目标
+### Voice-Agent：当智能体遇见声音
 
-### Voice-Agent：AI Agent 在语音领域的落地
+**Voice-Agent（智能语音代理）** 是 AI Agent 在语音世界的化身。它不仅能"听懂"人类的话语（ASR），"理解"背后的意图（LLM），还能"采取行动"（Tool Calling），最后用自然的声音"回应"（TTS）。
 
-**Voice-Agent（智能语音代理）** 是 AI Agent 在语音交互场景的具体实现。它不仅能"听懂"用户说话（ASR），"理解"用户意图（LLM），还能"采取行动"（Tool Calling），最后用自然的语音"回复"用户（TTS）。
+**云雀（Skylark）** — *生于云端，鸣于指尖* — 正是这样一个 Voice-Agent 系统。它基于纯 Java 生态，织就了 VAD + ASR + LLM + TTS + WebRTC 的完整经纬。而今，我们为它注入了**生产级 AI Agent 能力**，让它从"语音对话系统"蜕变为"智能任务执行系统"。
 
-**云雀（Skylark）** 正是这样一个 Voice-Agent 系统 —— 它基于纯 Java 生态，集成了 VAD + ASR + LLM + TTS + WebRTC 完整链路，现在，我们为它注入了**生产级 AI Agent 能力**，让它从"语音对话系统"进化为"智能任务执行系统"。
+### AgentScope：达摩院的匠心之作
 
----
-
-## 二、为什么 Voice-Agent 需要 Agent 框架？
-
-### 2.1 传统 LLM 集成的局限性
-
-在引入 AgentScope 之前，云雀的 LLM 集成采用的是**直接调用**模式：
-
-```
-用户语音 → ASR → LLM.chat(userText) → TTS → 语音回复
-```
-
-这种模式虽然简单，但存在明显的局限：
-
-- ❌ **单轮对话** - 每次调用都是独立的，无法维护对话历史
-- ❌ **无工具能力** - LLM 只能"说话"，不能"做事"（查询数据库、调用 API 等）
-- ❌ **推理能力受限** - 缺少 ReAct 等推理框架，无法处理复杂任务
-- ❌ **状态管理混乱** - 需要手动维护 Session、Memory、Context 等状态
-
-### 2.2 生产环境的实际需求
-
-在实际的 Voice-Agent 应用中，我们经常面临这样的需求：
-
-**场景 1：智能客服**
-> 用户："我想查一下我的订单状态"  
-> Agent：（需要）调用订单查询 API → 解析结果 → 用自然语言回复
-
-**场景 2：会议助手**
-> 用户："帮我安排明天下午和张三的会议"  
-> Agent：（需要）检查日历 → 查找空闲时间 → 创建会议 → 发送通知
-
-**场景 3：智能问答**
-> 用户："上周我们讨论的那个技术方案是什么？"  
-> Agent：（需要）从长期记忆中检索上下文 → 理解指代关系 → 给出准确回答
-
-这些场景都需要 Agent 具备：
-1. **多轮对话能力**（记住上下文）
-2. **工具调用能力**（查询数据、执行操作）
-3. **推理决策能力**（判断该调用哪个工具）
-
-**这正是 AgentScope 框架解决的核心问题。**
-
----
-
-## 三、AgentScope 框架介绍
-
-### 3.1 AgentScope 是什么？
-
-[AgentScope](https://github.com/agentscope-ai/agentscope-java) 是由**阿里巴巴达摩院**开源的生产级 AI Agent 框架，提供 Python 和 Java 两个版本。它的核心目标是：
+在众多 Agent 框架中，我们选择了 [AgentScope](https://github.com/agentscope-ai/agentscope-java) — 这是**阿里巴巴达摩院**倾力打造的生产级 AI Agent 框架，提供 Python 和 Java 双语言支持。
 
 > 让开发者能够快速构建、部署和管理生产级 AI Agent 应用。
 
-### 3.2 核心组件
+AgentScope 如同一座精心设计的花园，为开发者提供了完整的 Agent 开发组件：
 
-AgentScope 提供了一套完整的 Agent 开发组件：
+#### 🤖 ReActAgent：思考与行动的艺术
 
-#### 🤖 ReActAgent - ReAct 推理引擎
+**ReAct (Reasoning + Acting)** — 这个源自普林斯顿大学的经典框架（Yao et al., 2022），将推理与行动优雅地融为一体：
 
-**ReAct (Reasoning + Acting)** 是一种经典的 Agent 推理框架，论文来自普林斯顿大学（Yao et al., 2022）。
-
-**工作流程**：
 ```
-1. Thought（思考）：我需要做什么？
-2. Action（行动）：调用工具 X
-3. Observation（观察）：工具返回了结果 Y
-4. Thought（再思考）：根据结果 Y，我接下来应该...
-5. 循环，直到完成任务
+Thought（思考）：我该如何回应？
+  ↓
+Action（行动）：调用必要的工具
+  ↓
+Observation（观察）：解读工具返回的信息
+  ↓
+Thought（再思考）：综合判断，决定下一步
+  ↓
+（循环往复，直至任务完成）
 ```
 
-**AgentScope 的 ReActAgent 实现**：
-- 自动化 ReAct 循环
-- 支持最大迭代次数控制（防止死循环）
-- 集成工具调用、记忆管理
+AgentScope 的 ReActAgent 实现了这一推理循环的自动化，并巧妙地加入了迭代次数控制，既保证了推理的深度，又避免了陷入思维的死胡同。
 
-#### 💾 Memory - 对话记忆管理
+#### 💾 Memory：对话的记忆宫殿
 
-AgentScope 提供多种记忆实现：
+AgentScope 提供了多种记忆机制，如同为 Agent 构建了不同的记忆宫殿：
 
-- **InMemoryMemory** - 内存中的会话级记忆（云雀当前采用）
-- **SlidingWindowMemory** - 滑动窗口记忆（限制历史长度）
-- **VectorMemory** - 向量检索记忆（RAG）
+- **InMemoryMemory** — 轻盈的会话级记忆（云雀当前采用）
+- **SlidingWindowMemory** — 滑动窗口记忆，保留最近的印象
+- **VectorMemory** — 向量检索记忆，支持 RAG 知识增强
 
-云雀采用 **InMemoryMemory**，每个会话（Session）维护独立的对话历史，自动管理上下文。
+云雀采用 **InMemoryMemory**，为每个对话会话维护独立的记忆空间，让每一次交流都有温度和延续性。
 
-#### 🛠️ Toolkit - 工具注册与调用
+#### 🛠️ Toolkit：注解的魔法
 
-AgentScope 提供基于**注解**的工具注册机制：
+AgentScope 引入了基于**注解**的工具注册机制，让工具集成变得优雅而简洁：
 
 ```java
 public class MyTools {
@@ -151,68 +100,79 @@ public class MyTools {
     }
 }
 
-// 注册到 Agent
+// 注册到 Agent，一行搞定
 agentService.registerToolObject(new MyTools());
 ```
 
-Agent 会**自动**根据用户意图选择合适的工具调用，无需手动编写 if-else 逻辑。
+Agent 会像一位经验丰富的管家，自动根据用户意图选择合适的工具，无需繁琐的条件判断。
 
-#### 🌐 Model - 多模型支持
+#### 🌐 Model：多模型的交响
 
-AgentScope 支持多种 LLM 后端：
+AgentScope 兼容多种 LLM 后端：
 
-- **OpenAI API**（GPT-4o, GPT-4-Turbo 等）
+- **OpenAI 原生 API**（GPT-4o, GPT-4-Turbo 等）
 - **OpenAI 兼容 API**（DeepSeek, vLLM, Ollama, 千问, 智谱等）
 - **本地模型**（通过 vLLM/Ollama 代理）
 
-云雀当前集成的是 **DeepSeek Chat 模型**（通过 OpenAI 兼容 API），也可以无缝切换到其他模型。
+云雀当前使用 **DeepSeek Chat 模型**，也可以如同更换乐器般，无缝切换到任何兼容的模型。
 
 ---
 
-## 四、云雀引入 AgentScope 的背景
+## 二、云雀的蜕变：从对话到思考
 
-### 4.1 云雀项目回顾
+### 云雀的前世今生
 
-**云雀（Skylark）** — *生于云端，鸣于指尖* — 是一个基于**纯 Java 生态**的智能语音交互系统（Voice-Agent）。
+**云雀（Skylark）** — *生于云端，鸣于指尖* — 是一个基于**纯 Java 生态**的智能语音交互系统。它如同一只灵动的云雀，在技术的天空中自由翱翔：
 
 **核心能力全景**：
-- 🎤 **VAD** - Silero + ONNX Runtime 1.16.3（语音活动检测）
-- 🎯 **ASR** - Vosk 0.3.45（离线语音识别，支持中文）
-- 🤖 **LLM** - 可插拔 LLM 后端（Ollama / OpenAI）
-- 🔊 **TTS** - MaryTTS / 可扩展（文本转语音）
-- 📞 **RTC** - WebSocket / Kurento 6.18.0 / LiveKit 0.12.0（三种 WebRTC 策略）
+- 🎤 **VAD** — Silero + ONNX Runtime 1.16.3，能精准捕捉声音的起落
+- 🎯 **ASR** — Vosk 0.3.45，将声音化作文字的魔法
+- 🤖 **LLM** — 可插拔的智慧大脑（Ollama / OpenAI）
+- 🔊 **TTS** — MaryTTS，赋予文字以声音的灵魂
+- 📞 **RTC** — WebSocket / Kurento 6.18.0 / LiveKit 0.12.0，三种实时通信之道
 
 **技术栈**：Java 17 + Spring Boot 3.2.0 + Maven
 
-### 4.2 引入前的痛点
+### 旧时光里的困境
 
-在 PR #28 之前，云雀的 LLM 集成面临以下问题：
+在引入 AgentScope 之前，云雀的 LLM 集成如同一座简陋的桥梁，虽能通行，却处处受限：
 
-#### 痛点 1：自定义 Agent/Memory/Tool 代码复杂
+```
+用户语音 → ASR → LLM.chat(userText) → TTS → 语音回复
+```
 
-云雀此前自行实现了 Agent、Memory、Tool 等组件，代码量庞大且难以维护：
+这种**直接调用**模式，简单却单薄：
 
-- 自定义 `AgentMemory` 类维护会话历史
-- 自定义 `ToolRegistry` 管理工具注册
+- ❌ **单轮对话** — 每次交流都是全新开始，无法延续记忆
+- ❌ **无工具能力** — LLM 只能"说话"，却不能"做事"
+- ❌ **推理受限** — 缺少 ReAct 框架，难以处理复杂任务
+- ❌ **状态混乱** — 需要手动维护 Session、Memory、Context
+
+#### 痛点一：自定义代码的重负
+
+云雀曾自行实现了 Agent、Memory、Tool 等组件，这些代码如同背负的重担：
+
+- 自定义 `AgentMemory` 类（150+ 行）
+- 自定义 `ToolRegistry` 类（200+ 行）
 - 手动编写工具调用逻辑
 - 手动管理 Session → Agent 映射
 
-**问题**：
-- 代码量大（300+ 行）
+**问题显而易见**：
+- 代码量庞大（300+ 行）
 - 测试覆盖困难
-- 缺少经过生产验证的推理框架
+- 缺少生产验证
 
-#### 痛点 2：无标准 ReAct 推理能力
+#### 痛点二：缺失的推理之光
 
 云雀的 LLM 集成仅支持简单的单轮对话，无法：
 
-- 多步骤推理（"我需要先查询 A，再根据 A 的结果查询 B"）
-- 自主工具选择（"这个任务需要调用哪个工具？"）
-- 错误恢复（"工具调用失败了，我该怎么办？"）
+- 进行多步骤推理（"我需要先查询 A，再根据 A 的结果查询 B"）
+- 自主选择工具（"这个任务需要调用哪个工具？"）
+- 从错误中恢复（"工具调用失败了，我该如何应对？"）
 
-#### 痛点 3：工具调用需要手动编排
+#### 痛点三：工具调用的繁琐编排
 
-每当需要新增一个工具（如订单查询、日历管理），开发者需要：
+每当需要新增一个工具（如订单查询、日历管理），开发者需要经历漫长的流程：
 
 1. 定义工具接口
 2. 在 LLM Prompt 中手动描述工具
@@ -220,41 +180,62 @@ AgentScope 支持多种 LLM 后端：
 4. 手动调用工具
 5. 将结果反馈给 LLM
 
-这个过程**繁琐且容易出错**。
+这个过程**繁琐且容易出错**，如同在黑暗中摸索。
 
-#### 痛点 4：缺少生产级别的状态管理
+#### 痛点四：状态管理的隐患
 
 - Session → Agent 的映射逻辑分散在多个类中
-- 内存泄漏风险（Session 未正确清理）
-- 并发安全问题（多线程访问 Memory）
+- 内存泄漏的风险（Session 未正确清理）
+- 并发安全的隐忧（多线程访问 Memory）
 
-### 4.3 为什么选择 AgentScope？
+### 真实场景的呼唤
 
-经过对比多个 Agent 框架（LangChain、AutoGPT、AgentScope 等），我们最终选择了 **AgentScope Java 版**，原因如下：
+在实际的 Voice-Agent 应用中，这些痛点体现得尤为明显：
+
+**场景一：智能客服**
+> 用户："我想查一下我的订单状态"  
+> *Agent 需要：调用订单查询 API → 解析结果 → 用自然语言回复*
+
+**场景二：会议助手**
+> 用户："帮我安排明天下午和张三的会议"  
+> *Agent 需要：检查日历 → 查找空闲时间 → 创建会议 → 发送通知*
+
+**场景三：智能问答**
+> 用户："上周我们讨论的那个技术方案是什么？"  
+> *Agent 需要：从长期记忆中检索上下文 → 理解指代关系 → 给出准确回答*
+
+这些场景都呼唤着 Agent 具备：
+1. **多轮对话能力** — 记住每次交流的温度
+2. **工具调用能力** — 查询数据、执行操作
+3. **推理决策能力** — 判断该调用哪个工具
+
+### 为什么选择 AgentScope？
+
+在众多 Agent 框架的海洋中（LangChain、AutoGPT、AgentScope 等），我们最终选择了 **AgentScope Java 版**，这是一次深思熟虑的决定：
 
 | 维度 | LangChain (Python) | AutoGPT (Python) | AgentScope (Java) | 云雀的选择 |
 |------|-------------------|------------------|-------------------|-----------|
-| **语言生态** | Python | Python | ✅ Java | ✅ 与云雀一致 |
-| **生产级成熟度** | ⚠️ 偏实验性 | ⚠️ 偏实验性 | ✅ 阿里巴巴生产验证 | ✅ 高 |
-| **Spring Boot 集成** | ❌ 需跨语言调用 | ❌ 需跨语言调用 | ✅ 原生集成 | ✅ 无缝 |
+| **语言生态** | Python | Python | ✅ Java | ✅ 与云雀同根 |
+| **生产成熟度** | ⚠️ 偏实验性 | ⚠️ 偏实验性 | ✅ 达摩院验证 | ✅ 久经考验 |
+| **Spring Boot 集成** | ❌ 跨语言调用 | ❌ 跨语言调用 | ✅ 原生融合 | ✅ 无缝对接 |
 | **ReAct 推理** | ✅ | ✅ | ✅ | ✅ |
-| **工具注解** | ❌ 手动 | ❌ 手动 | ✅ @Tool 注解 | ✅ 简洁 |
-| **记忆管理** | ⚠️ 需手动 | ⚠️ 需手动 | ✅ 开箱即用 | ✅ 自动 |
+| **工具注解** | ❌ 手动 | ❌ 手动 | ✅ @Tool 注解 | ✅ 优雅简洁 |
+| **记忆管理** | ⚠️ 需手动 | ⚠️ 需手动 | ✅ 开箱即用 | ✅ 自动管理 |
 | **OpenAI 兼容** | ✅ | ✅ | ✅ | ✅ |
-| **文档质量** | ⚠️ 英文为主 | ⚠️ 英文 | ✅ 中英双语 | ✅ 友好 |
+| **文档友好度** | ⚠️ 英文为主 | ⚠️ 英文 | ✅ 中英双语 | ✅ 贴心周到 |
 | **开源协议** | MIT | MIT | ✅ Apache 2.0 | ✅ 与云雀一致 |
 
-**结论**：AgentScope 是云雀的最佳选择，原因在于：
-1. **纯 Java 生态** - 无需跨语言，与云雀技术栈完美契合
-2. **生产级验证** - 阿里巴巴内部大规模应用
-3. **Spring Boot 友好** - 依赖注入、Bean 管理开箱即用
-4. **开发者友好** - 注解式工具注册，API 简洁易懂
+**选择 AgentScope 的理由**：
+1. **纯 Java 生态** — 如同母语般亲切，与云雀技术栈完美契合
+2. **生产级验证** — 阿里巴巴内部大规模应用，经过千锤百炼
+3. **Spring Boot 友好** — 依赖注入、Bean 管理，一切都那么自然
+4. **开发者友好** — 注解式工具注册，API 简洁如诗
 
 ---
 
-## 五、引入目标与技术选型
+## 三、引入目标与技术选型
 
-### 5.1 核心目标
+### 3.1 核心目标
 
 云雀引入 AgentScope 的核心目标是：
 
@@ -315,7 +296,7 @@ AgentScope 的 `OpenAIChatModel` 支持所有 OpenAI 兼容 API，使云雀可�
 - 智谱 ChatGLM
 - 本地部署的 vLLM / Ollama
 
-### 5.2 技术选型决策
+### 3.2 技术选型决策
 
 | 组件 | 技术选型 | 版本 | 原因 |
 |------|---------|------|------|
@@ -328,9 +309,9 @@ AgentScope 的 `OpenAIChatModel` 支持所有 OpenAI 兼容 API，使云雀可�
 
 ---
 
-## 六、技术实现深度解析
+## 四、技术实现深度解析
 
-### 6.1 AgentService 架构设计
+### 4.1 AgentService 架构设计
 
 云雀的 `AgentService` 是 AgentScope 框架的核心封装，负责：
 
@@ -365,9 +346,9 @@ AgentScope 的 `OpenAIChatModel` 支持所有 OpenAI 兼容 API，使云雀可�
          └─── 调用 ────> OpenAIChatModel (DeepSeek)
 ```
 
-### 6.2 核心代码实现
+### 4.2 核心代码实现
 
-#### 6.2.1 初始化 AgentService
+#### 4.2.1 初始化 AgentService
 
 ```java
 @Service
@@ -416,7 +397,7 @@ public class AgentService {
 - ✅ **OpenAI 兼容** - 支持任意 OpenAI 兼容 API
 - ✅ **单例 Toolkit** - 所有 Session 共享同一个工具集
 
-#### 6.2.2 创建 Per-Session Agent
+#### 4.2.2 创建 Per-Session Agent
 
 ```java
 private ReActAgent createAgent(String sessionId) {
@@ -439,7 +420,7 @@ private ReActAgent createAgent(String sessionId) {
 - ✅ **共享 Toolkit** - 所有 Agent 共享工具集
 - ✅ **可配置迭代次数** - 防止 ReAct 死循环
 
-#### 6.2.3 处理用户消息
+#### 4.2.3 处理用户消息
 
 ```java
 public String chat(String sessionId, String userText) throws Exception {
@@ -470,7 +451,7 @@ public String chat(String sessionId, String userText) throws Exception {
 - ✅ **同步阻塞** - 使用 `.block()` 等待 Agent 完成推理
 - ✅ **自动记忆管理** - AgentScope 自动维护对话历史
 
-#### 6.2.4 工具注册
+#### 4.2.4 工具注册
 
 ```java
 public void registerToolObject(Object toolObject) {
@@ -496,7 +477,7 @@ public class WeatherTools {
 agentService.registerToolObject(new WeatherTools());
 ```
 
-### 6.3 ReAct 推理流程示例
+### 4.3 ReAct 推理流程示例
 
 **用户输入**："北京今天天气怎么样？"
 
@@ -515,7 +496,7 @@ Final Answer: 北京今天天气晴朗，气温约 25°C，适合出行！
 
 **返回给用户**："北京今天天气晴朗，气温约 25°C，适合出行！"
 
-### 6.4 记忆管理机制
+### 4.4 记忆管理机制
 
 AgentScope 的 `InMemoryMemory` 自动维护对话历史：
 
@@ -539,7 +520,7 @@ agent.call(Msg.builder().textContent("我想查订单").build());
 - ✅ **上下文感知** - Agent 可以访问完整历史
 - ✅ **线程安全** - ConcurrentHashMap 保证并发安全
 
-### 6.5 与 OrchestrationService 的集成
+### 4.5 与 OrchestrationService 的集成
 
 云雀的 `OrchestrationService` 负责编排 VAD → ASR → AgentService → TTS 完整流程：
 
@@ -591,9 +572,9 @@ public class OrchestrationService {
 
 ---
 
-## 七、对云雀项目的核心收益
+## 五、对云雀项目的核心收益
 
-### 7.1 代码质量收益
+### 5.1 代码质量收益
 
 #### Before vs. After 对比
 
@@ -616,7 +597,7 @@ public class OrchestrationService {
 - ✅ **可扩展性** - 注解式工具注册，插件化扩展
 - ✅ **可读性** - API 简洁，代码意图清晰
 
-### 7.2 功能增强收益
+### 5.2 功能增强收益
 
 #### 新增能力
 
@@ -654,7 +635,7 @@ public class OrchestrationService {
 > 2. 找到"数据库优化"相关内容
 > 3. 结合上下文给出详细解答
 
-### 7.3 性能与稳定性收益
+### 5.3 性能与稳定性收益
 
 #### 性能指标
 
@@ -674,7 +655,7 @@ public class OrchestrationService {
 - ✅ **并发安全** - ConcurrentHashMap + 无状态设计
 - ✅ **可观测性** - 完善的日志和监控埋点
 
-### 7.4 开发效率收益
+### 5.4 开发效率收益
 
 #### 开发者体验提升
 
@@ -704,7 +685,7 @@ agentService.registerToolObject(new MyTools());
 
 **开发效率提升 90%！**
 
-### 7.5 生态与社区收益
+### 5.5 生态与社区收益
 
 #### 接入 AgentScope 生态
 
@@ -723,9 +704,9 @@ agentService.registerToolObject(new MyTools());
 
 ---
 
-## 八、快速上手指南
+## 六、快速上手指南
 
-### 8.1 环境准备
+### 6.1 环境准备
 
 #### 前置条件
 
@@ -752,7 +733,7 @@ DEEPSEEK_API_KEY=your_api_key_here
 export $(cat .env | xargs)
 ```
 
-### 8.2 快速启动
+### 6.2 快速启动
 
 #### 1. 克隆项目
 
@@ -806,7 +787,7 @@ curl -X POST http://localhost:8080/api/agent/chat \
 }
 ```
 
-### 8.3 工具扩展示例
+### 6.3 工具扩展示例
 
 #### 场景：为云雀添加天气查询能力
 
@@ -876,7 +857,7 @@ Thought: 已获取天气信息，可以回复用户
 Final Answer: 北京今天天气晴朗，气温约 25°C，湿度 60%，适合外出！
 ```
 
-### 8.4 配置切换模型
+### 6.4 配置切换模型
 
 #### 切换到 OpenAI GPT-4o
 
@@ -912,9 +893,9 @@ this.chatModel = OpenAIChatModel.builder()
 
 ---
 
-## 九、实战案例：构建智能客服助手
+## 七、实战案例：构建智能客服助手
 
-### 9.1 需求描述
+### 7.1 需求描述
 
 构建一个智能客服 Voice-Agent，支持：
 
@@ -923,7 +904,7 @@ this.chatModel = OpenAIChatModel.builder()
 3. **投诉处理** - "我要投诉，产品有质量问题"
 4. **FAQ 回答** - "你们的退货政策是什么？"
 
-### 9.2 工具定义
+### 7.2 工具定义
 
 ```java
 @Component
@@ -967,7 +948,7 @@ public class CustomerServiceTools {
 }
 ```
 
-### 9.3 System Prompt 优化
+### 7.3 System Prompt 优化
 
 ```java
 String systemPrompt = 
@@ -981,7 +962,7 @@ String systemPrompt =
 AgentService agentService = new AgentService(systemPrompt, 10);
 ```
 
-### 9.4 对话示例
+### 7.4 对话示例
 
 **对话 1：订单查询**
 > 用户："我想查一下订单 12345 的状态"  
@@ -1001,7 +982,7 @@ AgentService agentService = new AgentService(systemPrompt, 10);
 > Agent：[调用 create_complaint(description="产品质量问题")]  
 > Agent："非常抱歉给您带来不便。我已为您创建投诉工单 TICKET-1234567890，我们会在 24 小时内联系您处理。"
 
-### 9.5 WebRTC 语音集成
+### 7.5 WebRTC 语音集成
 
 将 AgentService 集成到 WebRTC 语音通话：
 
@@ -1056,9 +1037,9 @@ public class OrchestrationService {
 
 ---
 
-## 十、性能优化与最佳实践
+## 八、性能优化与最佳实践
 
-### 10.1 性能优化建议
+### 8.1 性能优化建议
 
 #### 1. 控制 ReAct 迭代次数
 
@@ -1121,7 +1102,7 @@ public class CachedWeatherTools {
 }
 ```
 
-### 10.2 最佳实践
+### 8.2 最佳实践
 
 #### 1. System Prompt 设计
 
@@ -1187,9 +1168,9 @@ public String queryOrder(@ToolParam(name = "orderId") String orderId) {
 
 ---
 
-## 十一、后续规划与社区共建
+## 九、后续规划与社区共建
 
-### 11.1 云雀 × AgentScope 路线图
+### 9.1 云雀 × AgentScope 路线图
 
 #### Q2 2026 - 功能增强
 
@@ -1212,7 +1193,7 @@ public String queryOrder(@ToolParam(name = "orderId") String orderId) {
 - [ ] **云雀 Agent 市场** - 分享和下载社区贡献的 Agent 模板
 - [ ] **企业版功能** - 权限管理、审计日志、SLA 保障
 
-### 11.2 如何参与贡献
+### 9.2 如何参与贡献
 
 云雀是一个**完全开源**的项目（Apache License 2.0），我们欢迎任何形式的贡献！
 
@@ -1255,62 +1236,62 @@ public String queryOrder(@ToolParam(name = "orderId") String orderId) {
 
 ---
 
-## 十二、总结
+## 十、总结
 
-### 12.1 核心要点回顾
+### 10.1 旅程的回望
 
-本文详细介绍了云雀项目引入 AgentScope 框架的全过程：
+这是一段关于蜕变的故事，关于云雀如何从一只懵懂的语音对话系统，蜕变为能思考、能行动的智能体。
 
-#### **为什么引入？**
-- ❌ 自定义 Agent 代码复杂、难维护
-- ❌ 缺少标准 ReAct 推理能力
-- ❌ 工具调用需要手动编排
-- ❌ 状态管理分散、易出错
+#### **蜕变的起因**
+- 曾经，自定义 Agent 代码如重负，难以维护
+- 曾经，缺少 ReAct 推理之光，无法多步思考
+- 曾经，工具调用需要繁琐编排，如同在黑暗中摸索
+- 曾经，状态管理分散混乱，隐患重重
 
-#### **引入了什么？**
-- ✅ **AgentScope 1.0.9** - 阿里达摩院生产级 AI Agent 框架
-- ✅ **ReActAgent** - 标准 ReAct 推理引擎
-- ✅ **InMemoryMemory** - 自动对话记忆管理
-- ✅ **Toolkit + @Tool** - 注解式工具注册
+#### **蜕变的契机**
+- ✨ **AgentScope 1.0.9** — 达摩院的匠心之作，生产级 AI Agent 框架
+- 🧠 **ReActAgent** — 思考与行动的艺术，标准推理引擎
+- 💾 **InMemoryMemory** — 记忆的宫殿，自动管理对话历史
+- 🛠️ **Toolkit + @Tool** — 注解的魔法，优雅的工具注册
 
-#### **带来了什么收益？**
-- ✅ **代码减少 70%** - 自定义 Agent/Memory/Tool 代码全部移除
-- ✅ **开发效率提升 90%** - 新增工具从 1 小时降至 5 分钟
-- ✅ **功能大幅增强** - 支持多步推理、工具调用、错误恢复
-- ✅ **稳定性提升** - 生产级框架，久经考验
+#### **蜕变的收获**
+- ✨ **代码减少 70%** — 轻装上阵，告别冗余
+- 🚀 **开发效率提升 90%** — 新增工具从 1 小时降至 5 分钟
+- 🎯 **功能大幅增强** — 多步推理、工具调用、错误恢复
+- 🏆 **稳定性提升** — 生产级框架，久经千锤百炼
 
-### 12.2 关键技术总结
+### 10.2 技术的诗篇
 
-| 技术点 | 说明 | 价值 |
-|--------|------|------|
-| **ReActAgent** | Reasoning + Acting 推理循环 | 自动多步推理 |
-| **InMemoryMemory** | Per-Session 记忆管理 | 上下文理解 |
-| **Toolkit + @Tool** | 注解式工具注册 | 插件化扩展 |
-| **OpenAIChatModel** | OpenAI 兼容 API | 任意模型切换 |
-| **ConcurrentHashMap** | Session → Agent 映射 | 并发安全 |
+| 技术之笔 | 描绘的画卷 | 赋予的力量 |
+|---------|-----------|----------|
+| **ReActAgent** | 思考与行动的循环往复 | 让智能体学会推理 |
+| **InMemoryMemory** | 每个会话的记忆宫殿 | 让对话有温度和延续 |
+| **Toolkit + @Tool** | 注解的简洁魔法 | 让扩展如诗般优雅 |
+| **OpenAIChatModel** | 模型切换的自由之门 | 让选择不再受限 |
+| **ConcurrentHashMap** | 会话与智能体的映射 | 让并发安全无忧 |
 
-### 12.3 适用场景
+### 10.3 应用的舞台
 
-云雀 × AgentScope 适用于以下场景：
+云雀 × AgentScope 已在多个舞台上翩翩起舞：
 
-- ✅ **智能客服** - 订单查询、FAQ、投诉处理
-- ✅ **会议助手** - 日历管理、会议安排、提醒
-- ✅ **知识问答** - 企业知识库检索、技术文档查询
-- ✅ **任务执行** - 自动化工作流、数据处理
-- ✅ **语音交互** - 智能音箱、车载语音、IoT 设备
+- 💼 **智能客服** — 倾听客户需求，查询订单、解答疑问、处理投诉
+- 📅 **会议助手** — 管理日历、安排会议、及时提醒
+- 📚 **知识问答** — 检索企业知识库、查询技术文档
+- ⚙️ **任务执行** — 自动化工作流、处理数据
+- 🎙️ **语音交互** — 智能音箱、车载语音、IoT 设备
 
-### 12.4 未来展望
+### 10.4 远方的星辰
 
-云雀的愿景是成为 **Java 生态最好用的 Voice-Agent 开源框架**。引入 AgentScope 是我们迈向这一目标的重要一步。
+云雀的愿景是成为 **Java 生态最好用的 Voice-Agent 开源框架**。引入 AgentScope 是我们迈向这一目标的重要一步，但这只是开始。
 
-接下来，我们将继续：
-- 🚀 **功能增强** - 多模态、流式响应、Agent 链式编排
-- 🎯 **性能优化** - 分布式部署、模型加速、缓存优化
-- 🌐 **生态建设** - 工具市场、可视化调试器、低代码构建器
+远方的星辰还在召唤：
+- 🚀 **功能的延伸** — 多模态交互、流式响应、Agent 链式编排
+- 🎯 **性能的打磨** — 分布式部署、模型加速、智能缓存
+- 🌐 **生态的繁荣** — 工具市场、可视化调试器、低代码构建器
 
-我们相信，开源的力量可以让 Voice-Agent 技术普惠每一个开发者和企业。
+我们相信，开源的力量能让 Voice-Agent 技术如阳光般洒向每一个开发者和企业。
 
-**让我们一起，让 AI 真正听懂人类，服务人类！**
+**让我们一起，让 AI 真正听懂人类，温暖人类！** 🐦
 
 ---
 
