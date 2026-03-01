@@ -49,9 +49,9 @@ AI Agent 不再是冰冷的问答机器，而是一个能够：
 
 **云雀（Skylark）** — *生于云端，鸣于指尖* — 正是这样一个 Voice-Agent 系统。它基于纯 Java 生态，织就了 VAD + ASR + LLM + TTS + WebRTC 的完整经纬。而今，我们为它注入了**生产级 AI Agent 能力**，让它从"语音对话系统"蜕变为"智能任务执行系统"。
 
-### AgentScope：达摩院的匠心之作
+### AgentScope：通义实验室的匠心之作
 
-在众多 Agent 框架中，我们选择了 [AgentScope](https://github.com/agentscope-ai/agentscope-java) — 这是**阿里巴巴达摩院**倾力打造的生产级 AI Agent 框架，提供 Python 和 Java 双语言支持。
+在众多 Agent 框架中，我们选择了 [AgentScope](https://github.com/agentscope-ai/agentscope-java) — 这是**阿里巴巴通义实验室**倾力打造的生产级 AI Agent 框架，提供 Python 和 Java 双语言支持。
 
 > 让开发者能够快速构建、部署和管理生产级 AI Agent 应用。
 
@@ -216,7 +216,7 @@ AgentScope 兼容多种 LLM 后端：
 | 维度 | LangChain (Python) | AutoGPT (Python) | AgentScope (Java) | 云雀的选择 |
 |------|-------------------|------------------|-------------------|-----------|
 | **语言生态** | Python | Python | ✅ Java | ✅ 与云雀同根 |
-| **生产成熟度** | ⚠️ 偏实验性 | ⚠️ 偏实验性 | ✅ 达摩院验证 | ✅ 久经考验 |
+| **生产成熟度** | ⚠️ 偏实验性 | ⚠️ 偏实验性 | ✅ 通义实验室验证 | ✅ 久经考验 |
 | **Spring Boot 集成** | ❌ 跨语言调用 | ❌ 跨语言调用 | ✅ 原生融合 | ✅ 无缝对接 |
 | **ReAct 推理** | ✅ | ✅ | ✅ | ✅ |
 | **工具注解** | ❌ 手动 | ❌ 手动 | ✅ @Tool 注解 | ✅ 优雅简洁 |
@@ -227,7 +227,7 @@ AgentScope 兼容多种 LLM 后端：
 
 **选择 AgentScope 的理由**：
 1. **纯 Java 生态** — 如同母语般亲切，与云雀技术栈完美契合
-2. **生产级验证** — 阿里巴巴内部大规模应用，经过千锤百炼
+2. **生产级验证** — 通义实验室主导开发，阿里巴巴内部大规模应用，经过千锤百炼
 3. **Spring Boot 友好** — 依赖注入、Bean 管理，一切都那么自然
 4. **开发者友好** — 注解式工具注册，API 简洁如诗
 
@@ -692,7 +692,7 @@ agentService.registerToolObject(new MyTools());
 - ✅ **官方文档** - 中英双语，详尽完善
 - ✅ **社区支持** - GitHub Issues、讨论区活跃
 - ✅ **案例库** - 官方提供多个企业级案例
-- ✅ **持续更新** - 阿里达摩院持续维护
+- ✅ **持续更新** - 通义实验室持续维护
 
 #### 云雀的开源影响力提升
 
@@ -1249,7 +1249,7 @@ public String queryOrder(@ToolParam(name = "orderId") String orderId) {
 - 曾经，状态管理分散混乱，隐患重重
 
 #### **蜕变的契机**
-- ✨ **AgentScope 1.0.9** — 达摩院的匠心之作，生产级 AI Agent 框架
+- ✨ **AgentScope 1.0.9** — 通义实验室的匠心之作，生产级 AI Agent 框架
 - 🧠 **ReActAgent** — 思考与行动的艺术，标准推理引擎
 - 💾 **InMemoryMemory** — 记忆的宫殿，自动管理对话历史
 - 🛠️ **Toolkit + @Tool** — 注解的魔法，优雅的工具注册
