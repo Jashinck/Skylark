@@ -25,9 +25,8 @@
 - [六、快速上手指南](#六快速上手指南)
 - [七、实战案例：构建智能客服助手](#七实战案例构建智能客服助手)
 - [八、性能优化与最佳实践](#八性能优化与最佳实践)
-- [九、后续规划与社区共建](#九后续规划与社区共建)
-- [十、总结](#十总结)
-- [附录：关于云雀开源项目](#附录关于云雀开源项目)
+- [九、总结](#九总结)
+- [十、后续规划与社区共建](#十后续规划与社区共建)
 
 ---
 
@@ -1168,9 +1167,9 @@ public String queryOrder(@ToolParam(name = "orderId") String orderId) {
 
 ---
 
-## 九、后续规划与社区共建
+## 十、后续规划与社区共建
 
-### 9.1 云雀 × AgentScope 路线图
+### 10.1 云雀 × AgentScope 路线图
 
 #### Q2 2026 - 功能增强
 
@@ -1193,28 +1192,59 @@ public String queryOrder(@ToolParam(name = "orderId") String orderId) {
 - [ ] **云雀 Agent 市场** - 分享和下载社区贡献的 Agent 模板
 - [ ] **企业版功能** - 权限管理、审计日志、SLA 保障
 
-### 9.2 如何参与贡献
+### 10.2 项目信息与核心特性
+
+#### 📂 项目信息
+
+- **项目名称**：云雀 (Skylark)
+- **标语**：生于云端，鸣于指尖
+- **GitHub**：[https://github.com/Jashinck/Skylark](https://github.com/Jashinck/Skylark)
+- **开源协议**：Apache License 2.0
+- **技术栈**：Java 17 + Spring Boot 3.2.0 + AgentScope 1.0.9
+
+#### 🌟 核心特性
+
+- 🎯 **纯 Java 生态** - 无需 Python 依赖
+- 🚀 **轻量部署** - 单一 JAR 包，一键启动
+- 🤖 **生产级 Agent** - 集成 AgentScope 框架
+- 🎙️ **完整语音链路** - VAD + ASR + LLM + TTS + WebRTC
+- 🔧 **三种 RTC 策略** - WebSocket / Kurento / LiveKit
+- 🛠️ **可插拔工具** - 注解式工具注册，插件化扩展
+
+#### 📖 相关文档
+
+- [README.md](./README.md) - 项目快速入门
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - 架构设计文档
+- [WEBRTC_GUIDE.md](./WEBRTC_GUIDE.md) - WebRTC 集成指南
+- [KURENTO_INTEGRATION.md](./KURENTO_INTEGRATION.md) - Kurento 集成指南
+- [WEBRTC_FRAMEWORKS_BLOG.md](./WEBRTC_FRAMEWORKS_BLOG.md) - WebRTC 双框架技术博客
+
+### 10.3 如何参与贡献
 
 云雀是一个**完全开源**的项目（Apache License 2.0），我们欢迎任何形式的贡献！
 
 #### 🌟 贡献方式
 
-**1. 提交 Issue**
+**1. ⭐ Star 项目**
+- 关注更新
+- 支持开源
+
+**2. 🐛 提交 Issue**
 - 报告 Bug
 - 提出功能建议
 - 分享使用案例
 
-**2. 提交 Pull Request**
+**3. 🔧 提交 Pull Request**
 - 修复 Bug
 - 实现新功能
 - 改进文档
 
-**3. 贡献工具**
+**4. 🛠️ 贡献工具**
 - 开发通用工具（如天气查询、地图导航）
 - 提交到云雀工具库
 
-**4. 分享使用案例**
-- 写技术博客
+**5. 📝 分享使用案例**
+- 撰写技术博客
 - 录制视频教程
 - 在社区分享经验
 
@@ -1234,11 +1264,35 @@ public String queryOrder(@ToolParam(name = "orderId") String orderId) {
 - ✅ 云雀社区认证
 - ✅ 技术分享机会
 
+#### 🤝 社区与支持
+
+- **GitHub Issues**：[https://github.com/Jashinck/Skylark/issues](https://github.com/Jashinck/Skylark/issues)
+- **讨论区**：[https://github.com/Jashinck/Skylark/discussions](https://github.com/Jashinck/Skylark/discussions)
+- **邮件列表**：skylark-dev@googlegroups.com
+
+#### 🏷️ 标签
+
+`#云雀` `#Skylark` `#AgentScope` `#AI-Agent` `#Voice-Agent` `#Java` `#Spring-Boot` `#WebRTC` `#ReAct` `#LLM` `#DeepSeek` `#ASR` `#TTS` `#VAD` `#Kurento` `#LiveKit` `#开源` `#纯Java` `#智能语音` `#语音交互` `#智能助手` `#客服机器人` `#会议助手` `#知识问答`
+
 ---
 
-## 十、总结
+<div align="center">
 
-### 10.1 旅程的回望
+**🐦 云雀 (Skylark)** — 生于云端，鸣于指尖
+
+*让智能语音交互触手可及*
+
+[GitHub](https://github.com/Jashinck/Skylark) | [文档](./README.md) | [贡献指南](./CONTRIBUTING.md)
+
+**⭐ 如果本文对你有帮助，请给云雀项目一个 Star！⭐**
+
+</div>
+
+---
+
+## 九、总结
+
+### 9.1 旅程的回望
 
 这是一段关于蜕变的故事，关于云雀如何从一只懵懂的语音对话系统，蜕变为能思考、能行动的智能体。
 
@@ -1260,7 +1314,7 @@ public String queryOrder(@ToolParam(name = "orderId") String orderId) {
 - 🎯 **功能大幅增强** — 多步推理、工具调用、错误恢复
 - 🏆 **稳定性提升** — 生产级框架，久经千锤百炼
 
-### 10.2 技术的诗篇
+### 9.2 技术的诗篇
 
 | 技术之笔 | 描绘的画卷 | 赋予的力量 |
 |---------|-----------|----------|
@@ -1270,7 +1324,7 @@ public String queryOrder(@ToolParam(name = "orderId") String orderId) {
 | **OpenAIChatModel** | 模型切换的自由之门 | 让选择不再受限 |
 | **ConcurrentHashMap** | 会话与智能体的映射 | 让并发安全无忧 |
 
-### 10.3 应用的舞台
+### 9.3 应用的舞台
 
 云雀 × AgentScope 已在多个舞台上翩翩起舞：
 
@@ -1280,7 +1334,7 @@ public String queryOrder(@ToolParam(name = "orderId") String orderId) {
 - ⚙️ **任务执行** — 自动化工作流、处理数据
 - 🎙️ **语音交互** — 智能音箱、车载语音、IoT 设备
 
-### 10.4 远方的星辰
+### 9.4 远方的星辰
 
 云雀的愿景是成为 **Java 生态最好用的 Voice-Agent 开源框架**。引入 AgentScope 是我们迈向这一目标的重要一步，但这只是开始。
 
@@ -1292,66 +1346,3 @@ public String queryOrder(@ToolParam(name = "orderId") String orderId) {
 我们相信，开源的力量能让 Voice-Agent 技术如阳光般洒向每一个开发者和企业。
 
 **让我们一起，让 AI 真正听懂人类，温暖人类！** 🐦
-
----
-
-## 附录：关于云雀开源项目
-
-### 📂 项目信息
-
-- **项目名称**：云雀 (Skylark)
-- **标语**：生于云端，鸣于指尖
-- **GitHub**：[https://github.com/Jashinck/Skylark](https://github.com/Jashinck/Skylark)
-- **开源协议**：Apache License 2.0
-- **技术栈**：Java 17 + Spring Boot 3.2.0 + AgentScope 1.0.9
-
-### 🌟 核心特性
-
-- 🎯 **纯 Java 生态** - 无需 Python 依赖
-- 🚀 **轻量部署** - 单一 JAR 包，一键启动
-- 🤖 **生产级 Agent** - 集成 AgentScope 框架
-- 🎙️ **完整语音链路** - VAD + ASR + LLM + TTS + WebRTC
-- 🔧 **三种 RTC 策略** - WebSocket / Kurento / LiveKit
-- 🛠️ **可插拔工具** - 注解式工具注册，插件化扩展
-
-### 📖 相关文档
-
-- [README.md](./README.md) - 项目快速入门
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - 架构设计文档
-- [WEBRTC_GUIDE.md](./WEBRTC_GUIDE.md) - WebRTC 集成指南
-- [KURENTO_INTEGRATION.md](./KURENTO_INTEGRATION.md) - Kurento 集成指南
-- [WEBRTC_FRAMEWORKS_BLOG.md](./WEBRTC_FRAMEWORKS_BLOG.md) - WebRTC 双框架技术博客
-
-### 🤝 社区与支持
-
-- **GitHub Issues**：[https://github.com/Jashinck/Skylark/issues](https://github.com/Jashinck/Skylark/issues)
-- **讨论区**：[https://github.com/Jashinck/Skylark/discussions](https://github.com/Jashinck/Skylark/discussions)
-- **邮件列表**：skylark-dev@googlegroups.com
-
-### 💡 如何贡献
-
-我们欢迎任何形式的贡献：
-
-1. ⭐ **Star** 项目，关注更新
-2. 🐛 **报告 Bug**，提交 Issue
-3. 💡 **提出建议**，参与讨论
-4. 🔧 **提交 PR**，贡献代码
-5. 📝 **撰写博客**，分享经验
-
-### 🏷️ 标签
-
-`#云雀` `#Skylark` `#AgentScope` `#AI-Agent` `#Voice-Agent` `#Java` `#Spring-Boot` `#WebRTC` `#ReAct` `#LLM` `#DeepSeek` `#ASR` `#TTS` `#VAD` `#Kurento` `#LiveKit` `#开源` `#纯Java` `#智能语音` `#语音交互` `#智能助手` `#客服机器人` `#会议助手` `#知识问答`
-
----
-
-<div align="center">
-
-**🐦 云雀 (Skylark)** — 生于云端，鸣于指尖
-
-*让智能语音交互触手可及*
-
-[GitHub](https://github.com/Jashinck/Skylark) | [文档](./README.md) | [贡献指南](./CONTRIBUTING.md)
-
-**⭐ 如果本文对你有帮助，请给云雀项目一个 Star！⭐**
-
-</div>
