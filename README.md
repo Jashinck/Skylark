@@ -405,8 +405,7 @@ skylark/
 │   │       ├── exception/              # 异常处理
 │   │       └── util/                   # 工具类
 │   ├── src/main/resources/config/       # 配置文件
-│   │   ├── config-java-only.yaml      # 纯Java配置
-│   │   └── config.yaml                 # 备用配置
+│   │   └── config.yaml                 # 配置文件
 │   └── pom.xml
 ├── web/                                 # Web前端
 │   ├── js/kurento-webrtc.js           # Kurento WebRTC 客户端

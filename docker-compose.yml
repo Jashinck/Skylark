@@ -13,7 +13,7 @@ services:
       - ./tmp:/app/tmp
       - ./logs:/app/logs
     restart: unless-stopped
-    command: ["java", "-jar", "skylark.jar", "config/config-java-only.yaml"]
+    command: ["java", "-jar", "skylark.jar", "config/config.yaml"]
 
 networks:
   default:
