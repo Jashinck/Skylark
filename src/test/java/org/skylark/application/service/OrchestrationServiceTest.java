@@ -42,14 +42,14 @@ class OrchestrationServiceTest {
         // Arrange
         String sessionId = "test-session-1";
         String text = "Hello";
-        String agentResponse = "Hi there!";
+        String llmResponse = "Hi there!";
         byte[] ttsAudio = new byte[]{1, 2, 3, 4};
         
-        // Mock AgentService response
-        when(agentService.chat(eq(sessionId), eq(text))).thenReturn(agentResponse);
+        // Mock AgentService response (backed by AgentScope ReActAgent)
+        when(agentService.chat(eq(sessionId), eq(text))).thenReturn(llmResponse);
         
         // Mock TTS
-        when(ttsService.synthesize(eq(agentResponse), isNull())).thenReturn(createTempFile(ttsAudio));
+        when(ttsService.synthesize(eq(llmResponse), isNull())).thenReturn(createTempFile(ttsAudio));
         
         List<Map<String, Object>> responses = new ArrayList<>();
         OrchestrationService.ResponseCallback callback = (sid, type, data) -> {
@@ -71,15 +71,18 @@ class OrchestrationServiceTest {
         Map<String, Object> asrData = (Map<String, Object>) responses.get(0).get("data");
         assertEquals(text, asrData.get("text"));
         
-        // Check agent response
+        // Check LLM response
         assertEquals("llm_response", responses.get(1).get("type"));
         Map<String, Object> llmData = (Map<String, Object>) responses.get(1).get("data");
-        assertEquals(agentResponse, llmData.get("text"));
+        assertEquals(llmResponse, llmData.get("text"));
         
         // Check TTS audio
         assertEquals("tts_audio", responses.get(2).get("type"));
         Map<String, Object> ttsData = (Map<String, Object>) responses.get(2).get("data");
         assertNotNull(ttsData.get("audio"));
+        
+        // Verify AgentService was called
+        verify(agentService, times(1)).chat(eq(sessionId), eq(text));
     }
 
     @Test
@@ -127,8 +130,8 @@ class OrchestrationServiceTest {
         String sessionId = "test-session-4";
         String text = "Hello";
         
-        when(agentService.chat(eq(sessionId), eq(text)))
-                .thenThrow(new RuntimeException("Agent error"));
+        // Mock AgentService error (AgentScope agent call fails)
+        when(agentService.chat(eq(sessionId), eq(text))).thenThrow(new RuntimeException("Agent error"));
         
         List<Map<String, Object>> responses = new ArrayList<>();
         OrchestrationService.ResponseCallback callback = (sid, type, data) -> {

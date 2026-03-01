@@ -2,9 +2,6 @@ package org.skylark.application.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.skylark.infrastructure.adapter.ASR;
-import org.skylark.infrastructure.adapter.TTS;
-import org.skylark.infrastructure.adapter.VAD;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -19,11 +16,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * Orchestration Service
  * 编排服务
  * 
- * <p>Orchestrates the VAD->ASR->LLM->TTS pipeline for real-time voice interaction.
- * Manages session state and coordinates between different AI services.</p>
+ * <p>Orchestrates the VAD->ASR->AgentScope->TTS pipeline for real-time voice interaction.
+ * Manages session state and coordinates between different AI services.
+ * Uses AgentScope's ReActAgent for intelligent context-aware responses.</p>
  * 
  * @author Skylark Team
- * @version 1.0.0
+ * @version 2.0.0
  */
 @Service
 public class OrchestrationService {
@@ -121,7 +119,7 @@ public class OrchestrationService {
             // Send ASR result notification
             callback.send(sessionId, "asr_result", Map.of("text", text));
             
-            // Get agent response (with memory and tools)
+            // Get LLM response via AgentService (with memory context)
             String llmResponse = getLLMResponse(sessionId, text);
             logger.info("LLM response for session {}: {}", sessionId, llmResponse);
             
@@ -185,7 +183,7 @@ public class OrchestrationService {
             logger.info("ASR result for session {}: {}", sessionId, transcription);
             callback.send(sessionId, "asr_result", Map.of("text", transcription));
             
-            // Step 2: Agent - Get intelligent response (with memory and tools)
+            // Step 2: LLM - Get intelligent response via AgentService (with memory context)
             String llmResponse = getLLMResponse(sessionId, transcription);
             logger.info("LLM response for session {}: {}", sessionId, llmResponse);
             callback.send(sessionId, "llm_response", Map.of("text", llmResponse));
@@ -204,10 +202,19 @@ public class OrchestrationService {
     }
 
     /**
-     * Get agent response (with memory and tools) synchronously
+     * Get LLM response via AgentService with session memory context.
      */
     private String getLLMResponse(String sessionId, String text) throws Exception {
         return agentService.chat(sessionId, text);
+    }
+
+    /**
+     * Gets the AgentService for tool registration and agent configuration.
+     *
+     * @return AgentService instance
+     */
+    public AgentService getAgentService() {
+        return agentService;
     }
 
     /**
