@@ -2,7 +2,6 @@ package org.skylark.application.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.skylark.infrastructure.adapter.LLM;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -17,11 +16,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * Orchestration Service
  * 编排服务
  * 
- * <p>Orchestrates the VAD->ASR->LLM->TTS pipeline for real-time voice interaction.
- * Manages session state and coordinates between different AI services.</p>
+ * <p>Orchestrates the VAD->ASR->AgentScope->TTS pipeline for real-time voice interaction.
+ * Manages session state and coordinates between different AI services.
+ * Uses AgentScope's ReActAgent for intelligent context-aware responses.</p>
  * 
  * @author Skylark Team
- * @version 1.0.0
+ * @version 2.0.0
  */
 @Service
 public class OrchestrationService {
@@ -41,11 +41,11 @@ public class OrchestrationService {
     private final String tempDir = "temp/orchestration";
     
     public OrchestrationService(VADService vadService, ASRService asrService, 
-                               TTSService ttsService, LLM llmAdapter) {
+                               TTSService ttsService, AgentService agentService) {
         this.vadService = vadService;
         this.asrService = asrService;
         this.ttsService = ttsService;
-        this.agentService = new AgentService(llmAdapter);
+        this.agentService = agentService;
         
         // Create temp directory
         try {

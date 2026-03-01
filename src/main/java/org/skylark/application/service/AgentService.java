@@ -1,194 +1,259 @@
 package org.skylark.application.service;
 
+import io.agentscope.core.ReActAgent;
+import io.agentscope.core.memory.InMemoryMemory;
+import io.agentscope.core.memory.Memory;
+import io.agentscope.core.message.Msg;
+import io.agentscope.core.model.OpenAIChatModel;
+import io.agentscope.core.tool.Toolkit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.skylark.domain.model.AgentMemory;
-import org.skylark.domain.model.Tool;
-import org.skylark.domain.model.ToolRegistry;
-import org.skylark.infrastructure.adapter.LLM;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Agent Service - Intelligent Agent with Memory and Tool Capabilities
- * 智能体服务 - 具备记忆和工具能力的智能体
+ * Agent Service - Deep Integration with AgentScope Framework
+ * 智能体服务 - 深度集成 AgentScope 框架
  *
- * <p>Inspired by AgentScope, this service wraps the raw LLM with agent capabilities
- * including conversation memory, tool invocation, and system prompt management.
- * This transforms the simple dialogue assistant into an intelligent agent capable
- * of handling complex vertical business scenarios.</p>
+ * <p>Integrates the AgentScope framework to provide production-grade AI agent
+ * capabilities including ReAct reasoning, per-session memory management,
+ * tool invocation via {@code @Tool} annotations, and OpenAI-compatible model support.</p>
  *
- * <p>Key capabilities:</p>
+ * <p>This replaces the previous custom agent implementation with AgentScope's
+ * battle-tested components:</p>
  * <ul>
- *   <li><b>Memory</b> - Per-session conversation history for context continuity</li>
- *   <li><b>Tools</b> - Registerable tools for domain-specific actions</li>
- *   <li><b>System Prompt</b> - Configurable agent persona and behavior</li>
+ *   <li><b>ReActAgent</b> - ReAct (Reasoning + Acting) loop for autonomous task execution</li>
+ *   <li><b>OpenAIChatModel</b> - OpenAI-compatible model (supports DeepSeek, vLLM, etc.)</li>
+ *   <li><b>InMemoryMemory</b> - Per-session conversation history management</li>
+ *   <li><b>Toolkit</b> - Annotation-based tool registration and invocation</li>
  * </ul>
  *
  * @author Skylark Team
- * @version 1.0.0
+ * @version 2.0.0
+ * @see <a href="https://github.com/agentscope-ai/agentscope-java">AgentScope Java</a>
  */
 @Service
 public class AgentService {
 
     private static final Logger logger = LoggerFactory.getLogger(AgentService.class);
 
-    private final LLM llmAdapter;
-    private final AgentMemory memory;
-    private final ToolRegistry toolRegistry;
+    private static final String DEFAULT_SYSTEM_PROMPT =
+        "You are a professional AI training instructor with expertise in technical education. "
+        + "You maintain conversation context across interactions and provide detailed, "
+        + "accurate explanations. You can assist with complex queries in vertical business domains.";
+
+    private static final int DEFAULT_MAX_ITERS = 10;
+
+    private final OpenAIChatModel chatModel;
+    private final String systemPrompt;
+    private final Toolkit sharedToolkit;
+    private final int maxIters;
+
+    /**
+     * Per-session ReActAgent instances. Each agent maintains its own memory (conversation history)
+     * and is stateful, as required by AgentScope's design.
+     */
+    private final Map<String, ReActAgent> sessionAgents = new ConcurrentHashMap<>();
 
     /**
      * Constructs an AgentService with the given LLM adapter.
-     * Initializes with a default system prompt and empty tool registry.
+     * Creates an AgentScope OpenAIChatModel using environment configuration.
      *
-     * @param llmAdapter LLM adapter for chat interactions
+     * @param llmAdapter LLM adapter for backward compatibility
      */
-    public AgentService(LLM llmAdapter) {
-        this(llmAdapter,
-             "You are a helpful AI assistant with expertise in technical training. "
-             + "You maintain conversation context and can assist with complex queries.",
-             20);
+    public AgentService(org.skylark.infrastructure.adapter.LLM llmAdapter) {
+        this(DEFAULT_SYSTEM_PROMPT, DEFAULT_MAX_ITERS);
     }
 
     /**
-     * Constructs an AgentService with custom configuration.
+     * Constructs an AgentService with custom system prompt and default model configuration.
      *
-     * @param llmAdapter LLM adapter for chat interactions
      * @param systemPrompt System prompt defining agent persona
-     * @param maxHistoryTurns Maximum conversation turns to retain per session
+     * @param maxIters Maximum ReAct iterations per request
      */
-    public AgentService(LLM llmAdapter, String systemPrompt, int maxHistoryTurns) {
-        this.llmAdapter = llmAdapter;
-        this.memory = new AgentMemory(systemPrompt, maxHistoryTurns);
-        this.toolRegistry = new ToolRegistry();
-        logger.info("AgentService initialized with system prompt and maxHistoryTurns={}",
-            maxHistoryTurns);
+    public AgentService(String systemPrompt, int maxIters) {
+        this.systemPrompt = systemPrompt != null ? systemPrompt : DEFAULT_SYSTEM_PROMPT;
+        this.maxIters = maxIters > 0 ? maxIters : DEFAULT_MAX_ITERS;
+        this.sharedToolkit = new Toolkit();
+
+        // Create OpenAIChatModel for DeepSeek (OpenAI-compatible API)
+        String apiKey = System.getenv("DEEPSEEK_API_KEY");
+        if (apiKey == null || apiKey.isEmpty()) {
+            apiKey = "sk-placeholder";
+            logger.warn("DEEPSEEK_API_KEY not set, using placeholder. Set the environment variable for production use.");
+        }
+
+        this.chatModel = OpenAIChatModel.builder()
+            .apiKey(apiKey)
+            .modelName("deepseek-chat")
+            .baseUrl("https://api.deepseek.com")
+            .build();
+
+        logger.info("AgentService initialized with AgentScope ReActAgent, model=deepseek-chat, maxIters={}",
+            this.maxIters);
     }
 
     /**
-     * Processes a user message through the agent pipeline with memory context.
+     * Constructs an AgentService with explicit model configuration.
      *
-     * <p>Pipeline:</p>
+     * @param apiKey API key for the model provider
+     * @param modelName Model name (e.g., "deepseek-chat", "gpt-4o")
+     * @param baseUrl API base URL (e.g., "https://api.deepseek.com")
+     * @param systemPrompt System prompt defining agent persona
+     * @param maxIters Maximum ReAct iterations per request
+     */
+    public AgentService(String apiKey, String modelName, String baseUrl,
+                        String systemPrompt, int maxIters) {
+        this.systemPrompt = systemPrompt != null ? systemPrompt : DEFAULT_SYSTEM_PROMPT;
+        this.maxIters = maxIters > 0 ? maxIters : DEFAULT_MAX_ITERS;
+        this.sharedToolkit = new Toolkit();
+
+        this.chatModel = OpenAIChatModel.builder()
+            .apiKey(apiKey)
+            .modelName(modelName)
+            .baseUrl(baseUrl)
+            .build();
+
+        logger.info("AgentService initialized with AgentScope ReActAgent, model={}, baseUrl={}, maxIters={}",
+            modelName, baseUrl, this.maxIters);
+    }
+
+    /**
+     * Processes a user message through the AgentScope ReAct pipeline with session memory.
+     *
+     * <p>AgentScope ReAct pipeline:</p>
      * <ol>
-     *   <li>Add user message to session memory</li>
-     *   <li>Build full message list (system prompt + history)</li>
-     *   <li>Call LLM with complete context</li>
-     *   <li>Store assistant response in memory</li>
-     *   <li>Return response</li>
+     *   <li>Get or create per-session ReActAgent (with InMemoryMemory)</li>
+     *   <li>Build user message as AgentScope Msg</li>
+     *   <li>Agent executes ReAct loop (Reasoning → Acting → Reasoning...)</li>
+     *   <li>Memory automatically maintained by AgentScope</li>
+     *   <li>Return agent response text</li>
      * </ol>
      *
-     * @param sessionId Session identifier for memory management
+     * @param sessionId Session identifier for per-session agent management
      * @param userText User input text
      * @return Agent response text
-     * @throws Exception if LLM interaction fails
+     * @throws Exception if agent interaction fails
      */
     public String chat(String sessionId, String userText) throws Exception {
-        logger.debug("Agent processing message for session {}: {}", sessionId, userText);
+        logger.debug("AgentScope processing message for session {}: {}", sessionId, userText);
 
-        // Step 1: Add user message to memory
-        memory.addUserMessage(sessionId, userText);
+        // Get or create per-session ReActAgent
+        ReActAgent agent = sessionAgents.computeIfAbsent(sessionId, this::createAgent);
 
-        // Step 2: Build messages with full context (system prompt + history)
-        List<Map<String, String>> messages = memory.buildMessages(sessionId);
+        // Build AgentScope message
+        Msg userMsg = Msg.builder()
+            .textContent(userText)
+            .build();
 
-        // Step 3: Call LLM with streaming and collect response
-        StringBuilder response = new StringBuilder();
-        String responseId = UUID.randomUUID().toString();
+        // Execute AgentScope ReAct loop (blocking for synchronous orchestration)
+        Msg response = agent.call(userMsg).block();
 
-        try {
-            llmAdapter.chat(messages,
-                chunk -> response.append(chunk),
-                () -> logger.debug("LLM streaming completed for agent response: {}", responseId)
-            );
-        } catch (Exception e) {
-            logger.error("Agent LLM call failed for session {}: {}", sessionId, e.getMessage());
-            throw e;
-        }
+        String responseText = response != null ? response.getTextContent() : "";
 
-        String responseText = response.toString();
+        logger.debug("AgentScope response for session {}: {}", sessionId,
+            responseText != null && responseText.length() > 100
+                ? responseText.substring(0, 100) + "..." : responseText);
 
-        // Step 4: Store assistant response in memory
-        if (!responseText.isEmpty()) {
-            memory.addAssistantMessage(sessionId, responseText);
-        }
-
-        logger.debug("Agent response for session {}: {}", sessionId,
-            responseText.length() > 100 ? responseText.substring(0, 100) + "..." : responseText);
-
-        return responseText;
+        return responseText != null ? responseText : "";
     }
 
     /**
-     * Registers a tool with the agent.
+     * Registers a tool object with the shared toolkit.
+     * Tool methods should be annotated with {@code @Tool} and {@code @ToolParam}
+     * following AgentScope's annotation-based tool registration.
      *
-     * @param tool Tool to register
-     */
-    public void registerTool(Tool tool) {
-        toolRegistry.register(tool);
-        logger.info("Tool registered with agent: {}", tool.getName());
-    }
-
-    /**
-     * Executes a registered tool by name.
+     * <p>Example:</p>
+     * <pre>
+     * public class MyTools {
+     *     &#64;Tool(name = "search", description = "Search knowledge base")
+     *     public String search(&#64;ToolParam(name = "query", description = "Search query") String query) {
+     *         return "Search results for: " + query;
+     *     }
+     * }
+     * agentService.registerToolObject(new MyTools());
+     * </pre>
      *
-     * @param toolName Name of the tool to execute
-     * @param parameters Tool parameters
-     * @return Tool execution result, or error message if tool not found
+     * @param toolObject Object containing @Tool annotated methods
      */
-    public String executeTool(String toolName, Map<String, Object> parameters) {
-        Tool tool = toolRegistry.getTool(toolName);
-        if (tool == null) {
-            logger.warn("Tool not found: {}", toolName);
-            return "Tool not found: " + toolName;
-        }
-
-        logger.info("Executing tool: {} with parameters: {}", toolName, parameters);
-        try {
-            return tool.execute(parameters);
-        } catch (Exception e) {
-            logger.error("Tool execution failed: {}", toolName, e);
-            return "Tool execution error: " + e.getMessage();
-        }
+    public void registerToolObject(Object toolObject) {
+        sharedToolkit.registerTool(toolObject);
+        logger.info("Tool object registered with AgentScope Toolkit: {}", toolObject.getClass().getSimpleName());
     }
 
     /**
-     * Cleans up session resources including memory.
+     * Cleans up session resources, removing the per-session ReActAgent and its memory.
      *
      * @param sessionId Session identifier
      */
     public void clearSession(String sessionId) {
-        memory.clearSession(sessionId);
-        logger.info("Agent session cleared: {}", sessionId);
+        sessionAgents.remove(sessionId);
+        logger.info("AgentScope session cleared: {}", sessionId);
     }
 
     /**
-     * Gets the conversation history for a session.
+     * Gets the conversation history for a session from AgentScope's Memory.
      *
      * @param sessionId Session identifier
-     * @return List of messages in the session history
+     * @return List of AgentScope Msg objects in the session history
      */
-    public List<org.skylark.domain.model.Message> getSessionHistory(String sessionId) {
-        return memory.getHistory(sessionId);
+    public List<Msg> getSessionHistory(String sessionId) {
+        ReActAgent agent = sessionAgents.get(sessionId);
+        if (agent != null) {
+            Memory memory = agent.getMemory();
+            if (memory != null) {
+                return memory.getMessages();
+            }
+        }
+        return List.of();
     }
 
     /**
-     * Gets the agent's memory instance.
+     * Gets the AgentScope Toolkit for direct tool management.
      *
-     * @return AgentMemory instance
+     * @return AgentScope Toolkit instance
      */
-    public AgentMemory getMemory() {
-        return memory;
+    public Toolkit getToolkit() {
+        return sharedToolkit;
     }
 
     /**
-     * Gets the agent's tool registry.
+     * Gets the system prompt.
      *
-     * @return ToolRegistry instance
+     * @return System prompt string
      */
-    public ToolRegistry getToolRegistry() {
-        return toolRegistry;
+    public String getSystemPrompt() {
+        return systemPrompt;
+    }
+
+    /**
+     * Gets the number of active sessions.
+     *
+     * @return Number of active session agents
+     */
+    public int getActiveSessionCount() {
+        return sessionAgents.size();
+    }
+
+    /**
+     * Creates a new per-session ReActAgent with AgentScope components.
+     *
+     * @param sessionId Session identifier (used for agent naming)
+     * @return New ReActAgent instance with InMemoryMemory
+     */
+    private ReActAgent createAgent(String sessionId) {
+        logger.info("Creating AgentScope ReActAgent for session: {}", sessionId);
+
+        return ReActAgent.builder()
+            .name("Skylark-" + sessionId)
+            .sysPrompt(systemPrompt)
+            .model(chatModel)
+            .toolkit(sharedToolkit)
+            .memory(new InMemoryMemory())
+            .maxIters(maxIters)
+            .build();
     }
 }
