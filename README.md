@@ -11,6 +11,7 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Kurento](https://img.shields.io/badge/Kurento-6.18.0-blueviolet.svg)](https://kurento.openvidu.io/)
 [![LiveKit](https://img.shields.io/badge/LiveKit-0.12.0-ff69b4.svg)](https://livekit.io/)
+[![AgentScope](https://img.shields.io/badge/AgentScope-1.0.9-cyan.svg)](https://github.com/modelscope/agentscope)
 
 ---
 
