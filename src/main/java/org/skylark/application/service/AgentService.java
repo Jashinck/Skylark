@@ -83,7 +83,8 @@ public class AgentService {
         String apiKey = System.getenv("DEEPSEEK_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             apiKey = "sk-placeholder";
-            logger.warn("DEEPSEEK_API_KEY not set, using placeholder. Set the environment variable for production use.");
+            logger.warn("DEEPSEEK_API_KEY environment variable not set, using placeholder. "
+                + "Set DEEPSEEK_API_KEY before starting the application for production use.");
         }
 
         this.chatModel = OpenAIChatModel.builder()
