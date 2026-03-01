@@ -1,10 +1,10 @@
-# 纯Java部署指南 (Pure Java Deployment Guide)
+# 部署指南 (Deployment Guide)
 
 ## 目标 (Objective)
 
-本指南说明如何部署纯Java版本的Voice Agent系统，无需Python依赖。
+本指南说明如何部署Skylark语音助手系统。
 
-This guide explains how to deploy the pure Java version of the Voice Agent system without Python dependencies.
+This guide explains how to deploy the Skylark Voice Assistant system.
 
 ## 系统要求 (System Requirements)
 
@@ -28,12 +28,12 @@ After successful build, the `skylark.jar` file will be generated in the `target/
 
 ### 2. 配置服务 (Configure Services)
 
-使用纯Java配置文件：
+使用配置文件：
 
-Use the pure Java configuration file (copy to an external location for customization):
+Use the configuration file (copy to an external location for customization):
 
 ```bash
-cp src/main/resources/config/config-java-only.yaml my-config.yaml
+cp src/main/resources/config/config.yaml my-config.yaml
 ```
 
 编辑配置文件，设置API密钥：
@@ -151,7 +151,7 @@ After=network.target
 Type=simple
 User=voice-agent
 WorkingDirectory=/opt/voice-agent
-ExecStart=/usr/bin/java -jar /opt/voice-agent/./target/skylark.jar /opt/voice-agent/config/config-java-only.yaml
+ExecStart=/usr/bin/java -jar /opt/voice-agent/./target/skylark.jar /opt/voice-agent/config/config.yaml
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -173,7 +173,7 @@ sudo systemctl status voice-agent
 
 ### 使用Docker部署 (Docker Deployment)
 
-创建 `Dockerfile-java-only`:
+创建 `Dockerfile`:
 
 ```dockerfile
 FROM openjdk:17-slim
@@ -191,7 +191,7 @@ RUN mkdir -p /app/tmp /app/logs
 EXPOSE 8080
 
 # 启动服务
-CMD ["java", "-jar", "skylark.jar", "config/config-java-only.yaml"]
+CMD ["java", "-jar", "skylark.jar", "config/config.yaml"]
 ```
 
 构建并运行：
@@ -221,7 +221,7 @@ java -Xms2g -Xmx4g \
   -XX:MaxGCPauseMillis=200 \
   -XX:+HeapDumpOnOutOfMemoryError \
   -XX:HeapDumpPath=/app/logs/heap_dump.hprof \
-  -jar skylark.jar config/config-java-only.yaml
+  -jar skylark.jar config/config.yaml
 ```
 
 ### 配置文件优化 (Configuration Optimization)

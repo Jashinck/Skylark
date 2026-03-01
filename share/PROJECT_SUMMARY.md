@@ -67,10 +67,10 @@
 
 ### 部署选项 (Deployment Options)
 
-#### 纯Java单体部署 ⭐ 推荐
+#### 单体部署 ⭐ 推荐
 
 ```bash
-java -jar ./target/skylark.jar config/config-java-only.yaml
+java -jar ./target/skylark.jar config/config.yaml
 ```
 
 **优势**:
@@ -109,7 +109,7 @@ docker-compose up -d
 9. `PROJECT_SUMMARY.md` - 本文件
 
 **配置 (1个文件)**:
-10. `src/main/resources/config/config-java-only.yaml` - 纯Java模式配置
+10. `src/main/resources/config/config.yaml` - 配置文件
 
 ### 修改文件 (Modified Files)
 
@@ -148,7 +148,7 @@ docker-compose up -d
 ```bash
 cd root
 mvn clean package -DskipTests
-java -jar target/skylark.jar ../config/config-java-only.yaml
+java -jar target/skylark.jar ../config/config.yaml
 ```
 
 ### 测试端点 (Test Endpoints)

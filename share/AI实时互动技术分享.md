@@ -199,7 +199,7 @@ cd ..
 mvn clean package -DskipTests
 
 # 启动服务（纯Java模式）
-java -jar target/skylark.jar config/config-java-only.yaml
+java -jar target/skylark.jar config/config.yaml
 ```
 
 ### 第三步：开始使用

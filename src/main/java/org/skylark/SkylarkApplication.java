@@ -34,7 +34,7 @@ public class SkylarkApplication {
      * <p>Usage:</p>
      * <pre>
      * java -jar skylark.jar                                        # Use default config (classpath)
-     * java -jar skylark.jar config/config-java-only.yaml           # Use config from classpath
+     * java -jar skylark.jar config/config.yaml                     # Use config from classpath
      * java -jar skylark.jar /path/to/external/custom.yaml          # Use external config file
      * </pre>
      * 
