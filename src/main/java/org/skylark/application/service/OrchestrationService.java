@@ -2,35 +2,26 @@ package org.skylark.application.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.skylark.infrastructure.adapter.ASR;
-import org.skylark.infrastructure.adapter.LLM;
-import org.skylark.infrastructure.adapter.TTS;
-import org.skylark.infrastructure.adapter.VAD;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Orchestration Service
  * 编排服务
  * 
- * <p>Orchestrates the VAD->ASR->LLM->TTS pipeline for real-time voice interaction.
- * Manages session state and coordinates between different AI services.</p>
+ * <p>Orchestrates the VAD->ASR->AgentScope->TTS pipeline for real-time voice interaction.
+ * Manages session state and coordinates between different AI services.
+ * Uses AgentScope's ReActAgent for intelligent context-aware responses.</p>
  * 
  * @author Skylark Team
- * @version 1.0.0
+ * @version 2.0.0
  */
 @Service
 public class OrchestrationService {
@@ -40,10 +31,7 @@ public class OrchestrationService {
     private final VADService vadService;
     private final ASRService asrService;
     private final TTSService ttsService;
-    private final LLM llmAdapter;
-    
-    // For synchronous LLM responses
-    private final Map<String, StringBuilder> llmResponses = new ConcurrentHashMap<>();
+    private final AgentService agentService;
     
     // Session audio buffers for VAD processing
     private final Map<String, ByteArrayOutputStream> sessionBuffers = new ConcurrentHashMap<>();
@@ -53,11 +41,11 @@ public class OrchestrationService {
     private final String tempDir = "temp/orchestration";
     
     public OrchestrationService(VADService vadService, ASRService asrService, 
-                               TTSService ttsService, LLM llmAdapter) {
+                               TTSService ttsService, AgentService agentService) {
         this.vadService = vadService;
         this.asrService = asrService;
         this.ttsService = ttsService;
-        this.llmAdapter = llmAdapter;
+        this.agentService = agentService;
         
         // Create temp directory
         try {
@@ -131,8 +119,8 @@ public class OrchestrationService {
             // Send ASR result notification
             callback.send(sessionId, "asr_result", Map.of("text", text));
             
-            // Get LLM response
-            String llmResponse = getLLMResponse(text);
+            // Get LLM response via AgentService (with memory context)
+            String llmResponse = getLLMResponse(sessionId, text);
             logger.info("LLM response for session {}: {}", sessionId, llmResponse);
             
             // Send LLM response
@@ -159,6 +147,7 @@ public class OrchestrationService {
     public void cleanupSession(String sessionId) {
         sessionBuffers.remove(sessionId);
         sessionSpeaking.remove(sessionId);
+        agentService.clearSession(sessionId);
         logger.info("Cleaned up session: {}", sessionId);
     }
 
@@ -194,8 +183,8 @@ public class OrchestrationService {
             logger.info("ASR result for session {}: {}", sessionId, transcription);
             callback.send(sessionId, "asr_result", Map.of("text", transcription));
             
-            // Step 2: LLM - Get intelligent response
-            String llmResponse = getLLMResponse(transcription);
+            // Step 2: LLM - Get intelligent response via AgentService (with memory context)
+            String llmResponse = getLLMResponse(sessionId, transcription);
             logger.info("LLM response for session {}: {}", sessionId, llmResponse);
             callback.send(sessionId, "llm_response", Map.of("text", llmResponse));
             
@@ -213,31 +202,19 @@ public class OrchestrationService {
     }
 
     /**
-     * Get LLM response synchronously
+     * Get LLM response via AgentService with session memory context.
      */
-    private String getLLMResponse(String text) throws Exception {
-        String responseId = UUID.randomUUID().toString();
-        StringBuilder response = new StringBuilder();
-        llmResponses.put(responseId, response);
-        
-        try {
-            // Create message list for LLM
-            List<Map<String, String>> messages = new ArrayList<>();
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", text);
-            messages.add(userMessage);
-            
-            // Call LLM with streaming and collect response
-            llmAdapter.chat(messages, 
-                chunk -> response.append(chunk),
-                () -> logger.debug("LLM streaming completed for response: {}", responseId)
-            );
-            
-            return response.toString();
-        } finally {
-            llmResponses.remove(responseId);
-        }
+    private String getLLMResponse(String sessionId, String text) throws Exception {
+        return agentService.chat(sessionId, text);
+    }
+
+    /**
+     * Gets the AgentService for tool registration and agent configuration.
+     *
+     * @return AgentService instance
+     */
+    public AgentService getAgentService() {
+        return agentService;
     }
 
     /**

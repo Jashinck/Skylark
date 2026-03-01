@@ -25,6 +25,20 @@ llm:
   api_key: ${DEEPSEEK_API_KEY}
   url: https://api.deepseek.com/v1
 
+# AgentScope Framework Configuration (深度集成 AgentScope 智能体框架)
+agent:
+  # OpenAI-compatible model configuration (via AgentScope OpenAIChatModel)
+  model_name: deepseek-chat
+  api_key: ${DEEPSEEK_API_KEY}
+  base_url: https://api.deepseek.com
+  # Agent behavior
+  system_prompt: >
+    You are a professional AI training instructor with expertise in technical education.
+    You maintain conversation context across interactions and provide detailed,
+    accurate explanations. You can assist with complex queries in vertical business domains.
+  # Maximum ReAct reasoning iterations per request (AgentScope ReActAgent循环推理最大迭代次数)
+  max_iters: 10
+
 recorder:
   mode: local
 
