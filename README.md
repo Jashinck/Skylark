@@ -118,6 +118,8 @@ docker-compose up -d
 - **Vosk 0.3.45** - 离线语音识别
 - **MaryTTS 5.2** - 文本转语音
 - **ONNX Runtime 1.16.3** - Silero VAD 语音活动检测
+- **AgentScope 1.0.9** - AI Agent 框架（ReAct 推理、工具调用、记忆管理）
+- **OpenAI Java SDK 0.18.0** - OpenAI 兼容 API 客户端（支持 DeepSeek、千问等）
 - **Kurento Client 6.18.0** - WebRTC 媒体服务器客户端
 - **LiveKit Server SDK 0.12.0** - 云原生 WebRTC 服务端 SDK
 - **kurento-utils (CDN)** - 前端 WebRTC Peer 管理
@@ -128,12 +130,51 @@ docker-compose up -d
 ✅ **ASR (自动语音识别)** - 已集成 Vosk 离线语音识别  
 ⚠️ **TTS (文本转语音)** - 已准备 MaryTTS 集成（需手动安装）  
 ✅ **VAD (语音活动检测)** - 已集成 Silero VAD (ONNX Runtime)  
+✅ **Agent (AI 智能体)** - 已集成 AgentScope 框架，支持 ReAct 推理、工具调用、记忆管理  
 ✅ **Kurento WebRTC** - 已集成 Kurento Media Server 实现 1v1 实时语音通话  
 ✅ **LiveKit WebRTC** - 已集成 LiveKit 实现云原生 WebRTC 实时通话  
 
 所有服务均使用纯 Java 实现，无需 Python 依赖。
 
-详见: [开发指南](./JAVA_SERVICES_README.md)
+详见: [开发指南](./JAVA_SERVICES_README.md) | [AgentScope 技术博客](./AGENTSCOPE_INTEGRATION_BLOG.md)
+
+## 🤖 AgentScope AI Agent 能力 (AgentScope AI Agent Capabilities)
+
+云雀已深度集成 **AgentScope 1.0.9** 框架，提供生产级 AI Agent 能力。
+
+Skylark deeply integrates **AgentScope 1.0.9** framework, providing production-grade AI Agent capabilities.
+
+### 核心能力 (Core Capabilities)
+
+🧠 **ReAct 推理** - Reasoning + Acting 自主任务执行，支持多步骤推理  
+🛠️ **工具调用** - 基于 @Tool 注解的插件式工具生态，自动选择工具  
+💾 **记忆管理** - Per-Session InMemoryMemory，自动维护对话历史  
+🌐 **多模型支持** - OpenAI 兼容 API，支持 DeepSeek、GPT-4o、千问、智谱等  
+
+### 快速开始 (Quick Start)
+
+```bash
+# 1. 配置 DeepSeek API Key
+export DEEPSEEK_API_KEY=your_api_key_here
+
+# 2. 启动服务
+mvn spring-boot:run
+
+# 3. 测试 Agent 对话
+curl -X POST http://localhost:8080/api/agent/chat \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId": "test-001", "userText": "你好"}'
+```
+
+### 技术特性 (Technical Features)
+
+- ✅ **ReActAgent** - 标准 ReAct (Reasoning + Acting) 推理引擎
+- ✅ **Toolkit** - 注解式工具注册，5 行代码添加新能力
+- ✅ **InMemoryMemory** - 自动对话历史管理
+- ✅ **OpenAIChatModel** - 支持任意 OpenAI 兼容模型
+- ✅ **Session 管理** - Per-Session Agent 实例，并发安全
+
+详细文档: [AgentScope 集成技术博客](./AGENTSCOPE_INTEGRATION_BLOG.md)
 
 ## 🎙️ WebRTC 实时语音交互 (WebRTC Real-time Voice Interaction)
 
