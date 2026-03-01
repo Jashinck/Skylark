@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.skylark.infrastructure.adapter.LLM;
 
 import java.util.*;
 
@@ -29,13 +28,13 @@ class OrchestrationServiceTest {
     private TTSService ttsService;
 
     @Mock
-    private LLM llmAdapter;
+    private AgentService agentService;
 
     private OrchestrationService orchestrationService;
 
     @BeforeEach
     void setUp() {
-        orchestrationService = new OrchestrationService(vadService, asrService, ttsService, llmAdapter);
+        orchestrationService = new OrchestrationService(vadService, asrService, ttsService, agentService);
     }
 
     @Test
@@ -43,22 +42,14 @@ class OrchestrationServiceTest {
         // Arrange
         String sessionId = "test-session-1";
         String text = "Hello";
-        String llmResponse = "Hi there!";
+        String agentResponse = "Hi there!";
         byte[] ttsAudio = new byte[]{1, 2, 3, 4};
         
-        // Mock LLM response
-        doAnswer(invocation -> {
-            List<Map<String, String>> messages = invocation.getArgument(0);
-            java.util.function.Consumer<String> onChunk = invocation.getArgument(1);
-            Runnable onComplete = invocation.getArgument(2);
-            
-            onChunk.accept(llmResponse);
-            onComplete.run();
-            return null;
-        }).when(llmAdapter).chat(anyList(), any(), any());
+        // Mock AgentService response
+        when(agentService.chat(eq(sessionId), eq(text))).thenReturn(agentResponse);
         
         // Mock TTS
-        when(ttsService.synthesize(eq(llmResponse), isNull())).thenReturn(createTempFile(ttsAudio));
+        when(ttsService.synthesize(eq(agentResponse), isNull())).thenReturn(createTempFile(ttsAudio));
         
         List<Map<String, Object>> responses = new ArrayList<>();
         OrchestrationService.ResponseCallback callback = (sid, type, data) -> {
@@ -80,10 +71,10 @@ class OrchestrationServiceTest {
         Map<String, Object> asrData = (Map<String, Object>) responses.get(0).get("data");
         assertEquals(text, asrData.get("text"));
         
-        // Check LLM response
+        // Check agent response
         assertEquals("llm_response", responses.get(1).get("type"));
         Map<String, Object> llmData = (Map<String, Object>) responses.get(1).get("data");
-        assertEquals(llmResponse, llmData.get("text"));
+        assertEquals(agentResponse, llmData.get("text"));
         
         // Check TTS audio
         assertEquals("tts_audio", responses.get(2).get("type"));
@@ -126,17 +117,18 @@ class OrchestrationServiceTest {
         orchestrationService.cleanupSession(sessionId);
 
         // Assert
-        // Should not throw any exceptions
+        verify(agentService, times(1)).clearSession(sessionId);
         assertDoesNotThrow(() -> orchestrationService.cleanupSession(sessionId));
     }
 
     @Test
-    void testProcessTextInput_WithLLMError() throws Exception {
+    void testProcessTextInput_WithAgentError() throws Exception {
         // Arrange
         String sessionId = "test-session-4";
         String text = "Hello";
         
-        doThrow(new RuntimeException("LLM error")).when(llmAdapter).chat(anyList(), any(), any());
+        when(agentService.chat(eq(sessionId), eq(text)))
+                .thenThrow(new RuntimeException("Agent error"));
         
         List<Map<String, Object>> responses = new ArrayList<>();
         OrchestrationService.ResponseCallback callback = (sid, type, data) -> {
