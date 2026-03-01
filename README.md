@@ -15,9 +15,9 @@
 
 ---
 
-**云雀** 是一个基于 VAD、ASR、LLM、TTS、RTC 技术的智能语音交互代理系统。
+**云雀** 是一个基于 VAD、ASR、LLM、TTS、RTC 技术的智能语音交互代理系统，深度集成 **AgentScope** AI Agent 框架，实现自主推理与工具调用。
 
-**Skylark** is an intelligent Voice Agent system based on VAD, ASR, LLM, TTS, and RTC technologies.
+**Skylark** is an intelligent Voice Agent system based on VAD, ASR, LLM, TTS, and RTC technologies, deeply integrating the **AgentScope** AI Agent framework for autonomous reasoning and tool invocation.
 
 </div>
 
@@ -29,17 +29,18 @@
 🚀 **轻量部署** - 单一JAR包，一键启动  
 🔧 **灵活配置** - 支持纯Java或混合模式部署  
 🌐 **云原生友好** - 适配容器化和微服务架构  
-🎙️ **WebRTC集成** - 实时语音通信，VAD→ASR→LLM→TTS完整编排  
+🤖 **AgentScope AI Agent** - 深度集成 AgentScope 框架，ReAct 推理、工具调用、Per-Session 记忆管理，赋予系统自主任务执行能力  
+🎙️ **WebRTC集成** - 实时语音通信，VAD→ASR→AgentScope→TTS完整编排  
 📞 **Kurento 媒体服务** - 基于 Kurento Media Server 的专业 WebRTC 解决方案，提供服务端媒体处理、管道编排、会话管理与智能语音交互  
-🚀 **LiveKit 云原生** - 基于 LiveKit 的轻量级云原生 WebRTC 方案，Token 鉴权即用，Room 模型天然支持多人场景  
+☁️ **LiveKit 云原生** - 基于 LiveKit 的轻量级云原生 WebRTC 方案，Token 鉴权即用，Room 模型天然支持多人场景  
 
 ---
 
 ## 🎉 纯Java生态 (Pure Java Ecosystem)
 
-本项目现已完全采用**纯Java实现**的Voice Agent系统！所有服务（ASR、TTS、VAD）都使用Java实现，无需Python依赖。
+本项目现已完全采用**纯Java实现**的Voice Agent系统！所有服务（ASR、TTS、VAD）都使用Java实现，无需Python依赖。核心 AI 推理能力由 **AgentScope** 框架提供。
 
-This project now uses a **pure Java implementation** of the Voice Agent system! All services (ASR, TTS, VAD) are implemented in Java, with no Python dependencies.
+This project now uses a **pure Java implementation** of the Voice Agent system! All services (ASR, TTS, VAD) are implemented in Java, with no Python dependencies. Core AI reasoning is powered by the **AgentScope** framework.
 
 ### 架构特点 (Architecture Features)
 
@@ -96,11 +97,10 @@ docker run -d --name kms \
 
 ```bash
 # 1. 构建Java服务
-cd root
 mvn clean package -DskipTests
 
 # 2. 启动服务（使用纯Java配置）
-java -jar target/skylark.jar config/config-java-only.yaml
+java -jar target/skylark.jar
 ```
 
 ### Docker部署
@@ -114,7 +114,7 @@ docker-compose up -d
 
 - Spring Boot 3.2.0
 - Spring Web (REST API)
-- Spring WebFlux (异步HTTP客户��)
+- Spring WebFlux (异步HTTP客户端)
 - Java 17
 - **Vosk 0.3.45** - 离线语音识别
 - **MaryTTS 5.2** - 文本转语音
@@ -137,13 +137,41 @@ docker-compose up -d
 
 所有服务均使用纯 Java 实现，无需 Python 依赖。
 
-详见: [开发指南](./JAVA_SERVICES_README.md) | [AgentScope 技术博客](./AGENTSCOPE_INTEGRATION_BLOG.md)
+详见: [开发指南](./share/JAVA_SERVICES_README.md) | [AgentScope 技术博客](./share/AGENTSCOPE_INTEGRATION_BLOG.md)
 
 ## 🤖 AgentScope AI Agent 能力 (AgentScope AI Agent Capabilities)
 
-云雀已深度集成 **AgentScope 1.0.9** 框架，提供生产级 AI Agent 能力。
+云雀已深度集成 **AgentScope 1.0.9** 框架（阿里巴巴通义实验室出品），提供生产级 AI Agent 能力。
 
-Skylark deeply integrates **AgentScope 1.0.9** framework, providing production-grade AI Agent capabilities.
+Skylark deeply integrates **AgentScope 1.0.9** framework (by Alibaba Tongyi Lab), providing production-grade AI Agent capabilities.
+
+### 语音交互完整流水线 (Full Voice Interaction Pipeline)
+
+```
+用户语音输入
+     │
+     ▼
+  VADService                ← Silero VAD，语音活动检测
+     │ 语音片段
+     ▼
+  ASRService                ← Vosk 离线识别，语音转文字
+     │ 转录文本
+     ▼
+ AgentService               ← AgentScope 1.0.9
+  ├── ReActAgent            ← ReAct 推理引擎（Reasoning + Acting）
+  │     ├── 思考(Thought)   ← 分析意图，制定策略
+  │     ├── 行动(Action)    ← 调用工具（@Tool 注解）
+  │     └── 观察(Observe)   ← 整合工具结果，继续推理
+  ├── OpenAIChatModel       ← DeepSeek / GPT-4o / 千问 等
+  ├── InMemoryMemory        ← Per-Session 对话历史
+  └── Toolkit               ← 可扩展工具注册表
+     │ AI 回复文本
+     ▼
+  TTSService                ← MaryTTS，文本转语音
+     │
+     ▼
+用户语音输出
+```
 
 ### 核心能力 (Core Capabilities)
 
@@ -175,7 +203,25 @@ curl -X POST http://localhost:8080/api/agent/chat \
 - ✅ **OpenAIChatModel** - 支持任意 OpenAI 兼容模型
 - ✅ **Session 管理** - Per-Session Agent 实例，并发安全
 
-详细文档: [AgentScope 集成技术博客](./AGENTSCOPE_INTEGRATION_BLOG.md)
+### 扩展工具 (Extending Tools)
+
+通过 `@Tool` 注解，5 行代码即可为 Agent 添加新能力：
+
+```java
+public class MyTools {
+    @Tool(name = "query_order", description = "查询订单状态")
+    public String queryOrder(
+        @ToolParam(name = "orderId", description = "订单ID") String orderId
+    ) {
+        return "订单 " + orderId + " 状态：已发货";
+    }
+}
+
+// 注册到 AgentService
+agentService.registerToolObject(new MyTools());
+```
+
+详细文档: [AgentScope 集成技术博客](./share/AGENTSCOPE_INTEGRATION_BLOG.md)
 
 ## 🎙️ WebRTC 实时语音交互 (WebRTC Real-time Voice Interaction)
 
@@ -203,13 +249,13 @@ http://localhost:8080/webrtc.html
 
 ✅ **ASR 语音识别** - Vosk 离线语音识别  
 
-✅ **LLM 智能对话** - 支持多种 LLM 后端  
+✅ **LLM 智能对话** - AgentScope ReActAgent 驱动，支持多步推理与工具调用  
 
 ✅ **TTS 语音合成** - 文本转语音输出  
 
 ✅ **完整测试覆盖** - 单元测试和集成测试
 
-详细文档: [WebRTC 集成指南](./WEBRTC_GUIDE.md)
+详细文档: [WebRTC 集成指南](./share/WEBRTC_GUIDE.md)
 
 ## 📞 Kurento 实时通话 (Kurento Real-time Voice Call)
 
@@ -222,7 +268,7 @@ Skylark now integrates **Kurento Media Server** as a professional WebRTC solutio
 🎬 **服务端媒体处理** - 在服务端进行音频流处理，而非客户端  
 🔄 **Media Pipeline 编排** - 灵活的媒体管道架构，支持复杂的音频处理流程  
 🎙️ **WebRTC Endpoint 管理** - 专业的 WebRTC 端点创建、SDP 协商、ICE 处理  
-🤖 **智能语音集成** - 无缝集成 VAD→ASR→LLM→TTS 完整管道  
+🤖 **智能语音集成** - 无缝集成 VAD→ASR→**AgentScope ReActAgent**→TTS 完整管道  
 ⚡ **实时音频流处理** - AudioProcessor 实时处理音频数据，低延迟语音检测和识别  
 🔧 **健康检查与重连** - 自动健康监测，连接断开时自动重连  
 📊 **会话管理** - 完整的会话生命周期管理（创建、协商、维持、关闭）
@@ -244,7 +290,7 @@ Browser (kurento-webrtc.js)
 RobotController (Kurento Endpoints)
     │
     ↓
-WebRTCService ←→ VAD / ASR / LLM / TTS
+WebRTCService ←→ VAD / ASR / AgentScope(ReActAgent) / TTS
     │
     ↓
 KurentoClientAdapter → Kurento Media Server (ws://localhost:8888/kurento)
@@ -286,7 +332,7 @@ webrtc:
     server: stun:stun.l.google.com:19302
 ```
 
-详细文档: [Kurento 集成指南](./KURENTO_INTEGRATION.md)
+详细文档: [Kurento 集成指南](./share/KURENTO_INTEGRATION.md)
 
 ## 🚀 LiveKit 云原生通话 (LiveKit Cloud-Native Voice Call)
 
@@ -325,7 +371,7 @@ http://localhost:8080/livekit-demo.html
 | `POST` | `/api/webrtc/livekit/session` | 创建 LiveKit 会话（返回 Token + URL） |
 | `DELETE` | `/api/webrtc/livekit/session/{id}` | 关闭会话 |
 
-详细文档: [WebRTC 双框架技术博客](./WEBRTC_FRAMEWORKS_BLOG.md)
+详细文档: [WebRTC 双框架技术博客](./share/WEBRTC_FRAMEWORKS_BLOG.md)
 
 ## 📁 项目结构 (Project Structure)
 
@@ -338,10 +384,16 @@ skylark/
 ├── ./                        # Java服务
 │   ├── src/main/java/org/skylark/
 │   │   ├── api/                        # API接口层
-│   │   │   └── controller/             # REST控制器
+│   │   │   └── controller/             # REST控制器 (RobotController)
 │   │   ├── application/                # 应用层
 │   │   │   ├── dto/                    # 数据传输对象
-│   │   │   └── service/                # 应用服务 (ASR, TTS, VAD, WebRTC)
+│   │   │   └── service/                # 应用服务
+│   │   │       ├── AgentService.java   # AgentScope ReActAgent 封装（核心）
+│   │   │       ├── OrchestrationService.java  # VAD→ASR→Agent→TTS 编排
+│   │   │       ├── ASRService.java     # 语音识别 (Vosk)
+│   │   │       ├── TTSService.java     # 语音合成 (MaryTTS)
+│   │   │       ├── VADService.java     # 语音活动检测 (Silero VAD)
+│   │   │       └── WebRTCService.java  # WebRTC 实时通信
 │   │   ├── domain/                     # 领域层
 │   │   │   ├── model/                  # 领域模型 (Dialogue, Message)
 │   │   │   └── service/                # 领域服务接口
@@ -362,19 +414,25 @@ skylark/
 │   ├── kurento-demo.html              # Kurento 演示页面
 │   ├── livekit-demo.html              # LiveKit 演示页面
 │   └── webrtc.html                    # WebRTC 交互页面
-├── KURENTO_INTEGRATION.md              # Kurento 集成指南
-├── WEBRTC_FRAMEWORKS_BLOG.md           # WebRTC 双框架技术博客
-├── WEBRTC_GUIDE.md                     # WebRTC 集成指南
+├── share/                               # 技术文档
+│   ├── AGENTSCOPE_INTEGRATION_BLOG.md  # AgentScope 集成技术博客
+│   ├── ARCHITECTURE.md                 # 架构设计文档
+│   ├── KURENTO_INTEGRATION.md          # Kurento 集成指南
+│   ├── WEBRTC_FRAMEWORKS_BLOG.md       # WebRTC 双框架技术博客
+│   ├── WEBRTC_GUIDE.md                 # WebRTC 集成指南
+│   └── DEPLOYMENT_GUIDE.md            # 部署指南
 └── docker-compose.yml                   # Docker编排
 ```
 
 ### 架构说明 (Architecture Description)
 
 - **API层** (`api`): REST API接口，提供对外服务（包含 Kurento 和 LiveKit WebRTC 端点）
-- **应用层** (`application`): 业务逻辑编排，服务组合（包含 WebRTCService）
+- **应用层** (`application`): 业务逻辑编排，服务组合（包含 **AgentService**、OrchestrationService、WebRTCService）
 - **领域层** (`domain`): 核心业务模型和规则
 - **基础设施层** (`infrastructure`): 外部依赖适配，技术实现（包含 Kurento/LiveKit 适配器、WebRTCSession、AudioProcessor、策略模式）
 - **公共层** (`common`): 通用工具和组件
+
+> 📌 **AgentService** 是应用层的核心：它封装 AgentScope 的 `ReActAgent`，为每个会话维护独立的 `InMemoryMemory`，并通过 `Toolkit` 支持动态工具扩展。`OrchestrationService` 将 VAD→ASR→AgentService→TTS 串联为完整语音流水线。
 
 ---
 
