@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
  * <p>Type-safe configuration properties for WebRTC, including strategy selection,
  * Kurento, LiveKit, and STUN/TURN server settings.</p>
  * 
- * <p>Supports three pluggable strategies: websocket, kurento, livekit.
+ * <p>Supports four pluggable strategies: websocket, kurento, livekit, agora.
  * Use the {@code webrtc.strategy} property to select the active strategy.</p>
  * 
  * @author Skylark Team
@@ -21,13 +21,14 @@ import org.springframework.context.annotation.Configuration;
 public class WebRTCProperties {
     
     /**
-     * Active WebRTC channel strategy: websocket, kurento, or livekit
-     * 活动的 WebRTC 通道策略：websocket、kurento 或 livekit
+     * Active WebRTC channel strategy: websocket, kurento, livekit, or agora
+     * 活动的 WebRTC 通道策略：websocket、kurento、livekit 或 agora
      */
     private String strategy = "websocket";
     
     private final Kurento kurento = new Kurento();
     private final LiveKit livekit = new LiveKit();
+    private final Agora agora = new Agora();
     private final Stun stun = new Stun();
     private final Turn turn = new Turn();
     
@@ -45,6 +46,10 @@ public class WebRTCProperties {
     
     public LiveKit getLivekit() {
         return livekit;
+    }
+    
+    public Agora getAgora() {
+        return agora;
     }
     
     public Stun getStun() {
@@ -194,5 +199,36 @@ public class WebRTCProperties {
             
             return url;
         }
+    }
+    
+    /**
+     * Agora (声网) configuration
+     * 声网配置
+     */
+    public static class Agora {
+        private String appId = "";
+        private String appCertificate = "";
+        private String region = "cn";
+        private int sampleRate = 16000;
+        private int channels = 1;
+        private int tokenExpireSeconds = 3600;
+        
+        public String getAppId() { return appId; }
+        public void setAppId(String appId) { this.appId = appId; }
+        
+        public String getAppCertificate() { return appCertificate; }
+        public void setAppCertificate(String appCertificate) { this.appCertificate = appCertificate; }
+        
+        public String getRegion() { return region; }
+        public void setRegion(String region) { this.region = region; }
+        
+        public int getSampleRate() { return sampleRate; }
+        public void setSampleRate(int sampleRate) { this.sampleRate = sampleRate; }
+        
+        public int getChannels() { return channels; }
+        public void setChannels(int channels) { this.channels = channels; }
+        
+        public int getTokenExpireSeconds() { return tokenExpireSeconds; }
+        public void setTokenExpireSeconds(int tokenExpireSeconds) { this.tokenExpireSeconds = tokenExpireSeconds; }
     }
 }

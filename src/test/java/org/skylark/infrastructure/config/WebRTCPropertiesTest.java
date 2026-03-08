@@ -203,6 +203,10 @@ class WebRTCPropertiesTest {
         // Act - change to livekit
         properties.setStrategy("livekit");
         assertEquals("livekit", properties.getStrategy());
+        
+        // Act - change to agora
+        properties.setStrategy("agora");
+        assertEquals("agora", properties.getStrategy());
     }
     
     @Test
@@ -232,5 +236,44 @@ class WebRTCPropertiesTest {
         assertEquals("", liveKit.getUrl());
         assertEquals("", liveKit.getApiKey());
         assertEquals("", liveKit.getApiSecret());
+    }
+    
+    @Test
+    void testAgoraDefaultValues() {
+        // Arrange & Act
+        WebRTCProperties properties = new WebRTCProperties();
+        WebRTCProperties.Agora agora = properties.getAgora();
+        
+        // Assert
+        assertNotNull(agora);
+        assertEquals("", agora.getAppId());
+        assertEquals("", agora.getAppCertificate());
+        assertEquals("cn", agora.getRegion());
+        assertEquals(16000, agora.getSampleRate());
+        assertEquals(1, agora.getChannels());
+        assertEquals(3600, agora.getTokenExpireSeconds());
+    }
+    
+    @Test
+    void testAgoraConfiguration() {
+        // Arrange
+        WebRTCProperties properties = new WebRTCProperties();
+        WebRTCProperties.Agora agora = properties.getAgora();
+        
+        // Act
+        agora.setAppId("test-agora-app-id");
+        agora.setAppCertificate("test-agora-cert");
+        agora.setRegion("na");
+        agora.setSampleRate(48000);
+        agora.setChannels(2);
+        agora.setTokenExpireSeconds(7200);
+        
+        // Assert
+        assertEquals("test-agora-app-id", agora.getAppId());
+        assertEquals("test-agora-cert", agora.getAppCertificate());
+        assertEquals("na", agora.getRegion());
+        assertEquals(48000, agora.getSampleRate());
+        assertEquals(2, agora.getChannels());
+        assertEquals(7200, agora.getTokenExpireSeconds());
     }
 }

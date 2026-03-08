@@ -2,8 +2,11 @@ package org.skylark.infrastructure.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.skylark.application.service.OrchestrationService;
+import org.skylark.infrastructure.adapter.webrtc.AgoraClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.LiveKitClientAdapter;
+import org.skylark.infrastructure.adapter.webrtc.strategy.AgoraChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.KurentoChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.LiveKitChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.WebRTCChannelStrategy;
@@ -17,10 +20,10 @@ import org.springframework.context.annotation.Configuration;
  * WebRTC 策略配置
  * 
  * <p>Configures the active WebRTC channel strategy based on the
- * {@code webrtc.strategy} property. Supports: websocket, kurento, livekit.</p>
+ * {@code webrtc.strategy} property. Supports: websocket, kurento, livekit, agora.</p>
  * 
  * @author Skylark Team
- * @version 1.0.0
+ * @version 1.1.0
  */
 @Configuration
 public class WebRTCStrategyConfig {
@@ -35,6 +38,12 @@ public class WebRTCStrategyConfig {
     
     @Autowired
     private LiveKitClientAdapter liveKitClientAdapter;
+    
+    @Autowired
+    private AgoraClientAdapter agoraClientAdapter;
+    
+    @Autowired
+    private OrchestrationService orchestrationService;
     
     /**
      * Creates the active WebRTC channel strategy bean based on configuration
@@ -57,6 +66,10 @@ public class WebRTCStrategyConfig {
             case "livekit":
                 strategy = new LiveKitChannelStrategy(liveKitClientAdapter);
                 logger.info("✅ LiveKit WebRTC strategy activated");
+                break;
+            case "agora":
+                strategy = new AgoraChannelStrategy(agoraClientAdapter, orchestrationService);
+                logger.info("✅ Agora WebRTC strategy activated");
                 break;
             case "websocket":
             default:
