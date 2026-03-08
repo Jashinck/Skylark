@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.skylark.application.service.OrchestrationService;
 import org.skylark.infrastructure.adapter.webrtc.AgoraClientAdapter;
 
+import java.util.Base64;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -16,9 +19,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Uses Agora RTC Server SDK for real-time audio communication.
  * Agora handles ICE negotiation internally. Clients connect using
  * an RTC Token and Channel Name.</p>
+ *
+ * <p>Integrates with {@link OrchestrationService} for the
+ * VAD → ASR → LLM → TTS audio processing pipeline.
+ * When audio frames are received from the remote user, they are forwarded
+ * through the orchestration pipeline. TTS output is sent back via
+ * {@link AgoraClientAdapter#sendAudioFrame}.</p>
  * 
  * @author Skylark Team
- * @version 1.0.0
+ * @version 1.1.0
  */
 public class AgoraChannelStrategy implements WebRTCChannelStrategy {
 
@@ -27,10 +36,13 @@ public class AgoraChannelStrategy implements WebRTCChannelStrategy {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final AgoraClientAdapter agoraClient;
+    private final OrchestrationService orchestrationService;
     private final ConcurrentHashMap<String, AgoraSessionInfo> sessions = new ConcurrentHashMap<>();
 
-    public AgoraChannelStrategy(AgoraClientAdapter agoraClient) {
+    public AgoraChannelStrategy(AgoraClientAdapter agoraClient,
+                                 OrchestrationService orchestrationService) {
         this.agoraClient = agoraClient;
+        this.orchestrationService = orchestrationService;
     }
 
     @Override
@@ -48,10 +60,29 @@ public class AgoraChannelStrategy implements WebRTCChannelStrategy {
             String channelName = "skylark-" + sessionId;
             logger.info("[Agora] Creating session for user: {}, channel: {}", userId, channelName);
 
-            // Server joins the Agora channel
+            // 1. Server joins the Agora channel
             agoraClient.joinChannel(channelName, "skylark-server-bot");
 
-            // Generate client connection token
+            // 2. Register audio frame callback: remote PCM → OrchestrationService pipeline
+            //    TTS output from pipeline → sendAudioFrame back to the remote user
+            int sampleRate = 16000;
+            int channels = 1;
+            OrchestrationService.ResponseCallback responseCallback = (sid, type, data) -> {
+                if ("tts_audio".equals(type) && data instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    String audioBase64 = (String) ((Map<String, Object>) data).get("audio");
+                    if (audioBase64 != null) {
+                        byte[] ttsAudio = Base64.getDecoder().decode(audioBase64);
+                        agoraClient.sendAudioFrame(channelName, ttsAudio, sampleRate, channels);
+                    }
+                }
+            };
+            agoraClient.registerAudioFrameCallback(channelName,
+                (ch, uid, pcmData, sr, ch2) -> {
+                    orchestrationService.processAudioStream(sessionId, pcmData, responseCallback);
+                });
+
+            // 3. Generate client connection token
             String clientToken = agoraClient.generateToken(channelName, userId, 3600);
 
             AgoraSessionInfo sessionInfo = new AgoraSessionInfo(
@@ -99,6 +130,7 @@ public class AgoraChannelStrategy implements WebRTCChannelStrategy {
             AgoraSessionInfo session = sessions.remove(sessionId);
             if (session != null) {
                 agoraClient.leaveChannel(session.getChannelName());
+                orchestrationService.cleanupSession(sessionId);
                 logger.info("[Agora] Session closed: {}", sessionId);
             }
         } catch (Exception e) {

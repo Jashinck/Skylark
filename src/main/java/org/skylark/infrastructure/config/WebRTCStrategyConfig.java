@@ -2,6 +2,7 @@ package org.skylark.infrastructure.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.skylark.application.service.OrchestrationService;
 import org.skylark.infrastructure.adapter.webrtc.AgoraClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.LiveKitClientAdapter;
@@ -22,7 +23,7 @@ import org.springframework.context.annotation.Configuration;
  * {@code webrtc.strategy} property. Supports: websocket, kurento, livekit, agora.</p>
  * 
  * @author Skylark Team
- * @version 1.0.0
+ * @version 1.1.0
  */
 @Configuration
 public class WebRTCStrategyConfig {
@@ -40,6 +41,9 @@ public class WebRTCStrategyConfig {
     
     @Autowired
     private AgoraClientAdapter agoraClientAdapter;
+    
+    @Autowired
+    private OrchestrationService orchestrationService;
     
     /**
      * Creates the active WebRTC channel strategy bean based on configuration
@@ -64,7 +68,7 @@ public class WebRTCStrategyConfig {
                 logger.info("✅ LiveKit WebRTC strategy activated");
                 break;
             case "agora":
-                strategy = new AgoraChannelStrategy(agoraClientAdapter);
+                strategy = new AgoraChannelStrategy(agoraClientAdapter, orchestrationService);
                 logger.info("✅ Agora WebRTC strategy activated");
                 break;
             case "websocket":

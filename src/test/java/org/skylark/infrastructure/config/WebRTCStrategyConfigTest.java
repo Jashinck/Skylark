@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.skylark.application.service.OrchestrationService;
 import org.skylark.infrastructure.adapter.webrtc.AgoraClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.LiveKitClientAdapter;
@@ -36,6 +37,9 @@ class WebRTCStrategyConfigTest {
     @Mock
     private AgoraClientAdapter agoraClientAdapter;
     
+    @Mock
+    private OrchestrationService orchestrationService;
+    
     private WebRTCStrategyConfig createConfig(String strategyName) throws Exception {
         WebRTCProperties properties = new WebRTCProperties();
         properties.setStrategy(strategyName);
@@ -57,6 +61,10 @@ class WebRTCStrategyConfigTest {
         Field agoraField = WebRTCStrategyConfig.class.getDeclaredField("agoraClientAdapter");
         agoraField.setAccessible(true);
         agoraField.set(config, agoraClientAdapter);
+        
+        Field orchField = WebRTCStrategyConfig.class.getDeclaredField("orchestrationService");
+        orchField.setAccessible(true);
+        orchField.set(config, orchestrationService);
         
         return config;
     }

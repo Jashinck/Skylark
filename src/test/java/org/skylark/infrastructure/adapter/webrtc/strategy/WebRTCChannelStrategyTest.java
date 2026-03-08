@@ -9,6 +9,7 @@ import org.kurento.client.MediaPipeline;
 import org.kurento.client.WebRtcEndpoint;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.skylark.application.service.OrchestrationService;
 import org.skylark.infrastructure.adapter.webrtc.AgoraClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.LiveKitClientAdapter;
@@ -35,6 +36,9 @@ class WebRTCChannelStrategyTest {
     
     @Mock
     private AgoraClientAdapter agoraClient;
+    
+    @Mock
+    private OrchestrationService orchestrationService;
     
     @Mock
     private MediaPipeline mediaPipeline;
@@ -291,14 +295,14 @@ class WebRTCChannelStrategyTest {
     
     @Test
     void testAgoraStrategy_GetStrategyName() {
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         assertEquals("agora", strategy.getStrategyName());
     }
     
     @Test
     void testAgoraStrategy_IsAvailable_Connected() {
         when(agoraClient.isAvailable()).thenReturn(true);
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         
         assertTrue(strategy.isAvailable());
     }
@@ -306,7 +310,7 @@ class WebRTCChannelStrategyTest {
     @Test
     void testAgoraStrategy_IsAvailable_Disconnected() {
         when(agoraClient.isAvailable()).thenReturn(false);
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         
         assertFalse(strategy.isAvailable());
     }
@@ -316,7 +320,7 @@ class WebRTCChannelStrategyTest {
         when(agoraClient.generateToken(anyString(), eq("user-123"), eq(3600)))
             .thenReturn("agora-test-token");
         
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         String sessionId = strategy.createSession("user-123");
         
         assertNotNull(sessionId);
@@ -324,6 +328,7 @@ class WebRTCChannelStrategyTest {
         assertEquals(1, strategy.getActiveSessionCount());
         verify(agoraClient).joinChannel(anyString(), eq("skylark-server-bot"));
         verify(agoraClient).generateToken(anyString(), eq("user-123"), eq(3600));
+        verify(agoraClient).registerAudioFrameCallback(anyString(), any());
     }
     
     @Test
@@ -332,7 +337,7 @@ class WebRTCChannelStrategyTest {
             .thenReturn("agora-test-token");
         when(agoraClient.getAppId()).thenReturn("test-app-id");
         
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         String sessionId = strategy.createSession("user-123");
         
         String result = strategy.processOffer(sessionId, "ignored-sdp-offer");
@@ -345,7 +350,7 @@ class WebRTCChannelStrategyTest {
     
     @Test
     void testAgoraStrategy_ProcessOffer_SessionNotFound() {
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         
         assertThrows(IllegalArgumentException.class,
             () -> strategy.processOffer("non-existent", "test-offer"));
@@ -353,7 +358,7 @@ class WebRTCChannelStrategyTest {
     
     @Test
     void testAgoraStrategy_AddIceCandidate_NoOp() {
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         
         // Should not throw - Agora handles ICE internally
         assertDoesNotThrow(() ->
@@ -365,18 +370,19 @@ class WebRTCChannelStrategyTest {
         when(agoraClient.generateToken(anyString(), eq("user-123"), eq(3600)))
             .thenReturn("agora-test-token");
         
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         String sessionId = strategy.createSession("user-123");
         
         strategy.closeSession(sessionId);
         
         assertFalse(strategy.sessionExists(sessionId));
         verify(agoraClient).leaveChannel(anyString());
+        verify(orchestrationService).cleanupSession(sessionId);
     }
     
     @Test
     void testAgoraStrategy_CreateSession_NullUserId() {
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         
         assertThrows(IllegalArgumentException.class,
             () -> strategy.createSession(null));
@@ -384,7 +390,7 @@ class WebRTCChannelStrategyTest {
     
     @Test
     void testAgoraStrategy_CreateSession_EmptyUserId() {
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         
         assertThrows(IllegalArgumentException.class,
             () -> strategy.createSession("  "));
@@ -396,7 +402,7 @@ class WebRTCChannelStrategyTest {
             .thenReturn("agora-test-token");
         when(agoraClient.getAppId()).thenReturn("test-app-id");
         
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         String sessionId = strategy.createSession("user-123");
         
         String result = strategy.processOffer(sessionId, "ignored-sdp-offer");
@@ -412,7 +418,7 @@ class WebRTCChannelStrategyTest {
     
     @Test
     void testAgoraStrategy_CloseSession_NonExistent_NoError() {
-        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         
         // Should not throw when closing a non-existent session
         assertDoesNotThrow(() -> strategy.closeSession("non-existent-session"));
@@ -425,7 +431,7 @@ class WebRTCChannelStrategyTest {
         WebSocketChannelStrategy wsStrategy = new WebSocketChannelStrategy();
         KurentoChannelStrategy kurentoStrategy = new KurentoChannelStrategy(kurentoClient);
         LiveKitChannelStrategy liveKitStrategy = new LiveKitChannelStrategy(liveKitClient);
-        AgoraChannelStrategy agoraStrategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy agoraStrategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         
         assertFalse(wsStrategy.sessionExists("non-existent"));
         assertFalse(kurentoStrategy.sessionExists("non-existent"));
@@ -438,7 +444,7 @@ class WebRTCChannelStrategyTest {
         WebSocketChannelStrategy wsStrategy = new WebSocketChannelStrategy();
         KurentoChannelStrategy kurentoStrategy = new KurentoChannelStrategy(kurentoClient);
         LiveKitChannelStrategy liveKitStrategy = new LiveKitChannelStrategy(liveKitClient);
-        AgoraChannelStrategy agoraStrategy = new AgoraChannelStrategy(agoraClient);
+        AgoraChannelStrategy agoraStrategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
         
         assertEquals(0, wsStrategy.getActiveSessionCount());
         assertEquals(0, kurentoStrategy.getActiveSessionCount());
