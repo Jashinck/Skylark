@@ -2,7 +2,7 @@
 
 本目录存放无法通过 Maven 中央仓库获取的原生 SDK JAR 包。
 
-> **注意**：声网 Agora RTC Server SDK（`io.agora.rtc:linux-sdk`）已通过 Maven 中央仓库直接引入，
+> **注意**：声网 Agora RTC Server SDK（`io.agora.rtc:linux-java-sdk`）已通过 Maven 中央仓库直接引入，
 > 无需放置在此目录。详见 `pom.xml` 和 `share/PAAS_RTC_INTEGRATION_SPEC.md` §2.1。
 
 ## 阿里云 AliRTC Linux SDK（如需使用）
