@@ -1,5 +1,7 @@
 package org.skylark.infrastructure.adapter.webrtc.strategy;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.skylark.infrastructure.adapter.webrtc.LiveKitClientAdapter;
@@ -21,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LiveKitChannelStrategy implements WebRTCChannelStrategy {
     
     private static final Logger logger = LoggerFactory.getLogger(LiveKitChannelStrategy.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
     
     private final LiveKitClientAdapter liveKitClient;
     private final ConcurrentHashMap<String, LiveKitSessionInfo> sessions = new ConcurrentHashMap<>();
@@ -69,7 +72,15 @@ public class LiveKitChannelStrategy implements WebRTCChannelStrategy {
         // LiveKit handles SDP internally; return connection info (token + URL)
         // The client uses this token to connect directly to the LiveKit server
         logger.debug("[LiveKit] Returning connection info for session: {}", sessionId);
-        return "{\"token\":\"" + session.getToken() + "\",\"url\":\"" + session.getServerUrl() + "\"}";
+        try {
+            ObjectNode node = objectMapper.createObjectNode();
+            node.put("token", session.getToken());
+            node.put("url", session.getServerUrl());
+            return objectMapper.writeValueAsString(node);
+        } catch (Exception e) {
+            logger.error("[LiveKit] Failed to serialize connection info for session: {}", sessionId, e);
+            throw new RuntimeException("Failed to serialize LiveKit connection info", e);
+        }
     }
     
     @Override

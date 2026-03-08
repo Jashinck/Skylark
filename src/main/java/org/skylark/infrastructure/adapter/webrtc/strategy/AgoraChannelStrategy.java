@@ -1,5 +1,7 @@
 package org.skylark.infrastructure.adapter.webrtc.strategy;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.skylark.infrastructure.adapter.webrtc.AgoraClientAdapter;
@@ -22,6 +24,8 @@ public class AgoraChannelStrategy implements WebRTCChannelStrategy {
 
     private static final Logger logger = LoggerFactory.getLogger(AgoraChannelStrategy.class);
 
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     private final AgoraClientAdapter agoraClient;
     private final ConcurrentHashMap<String, AgoraSessionInfo> sessions = new ConcurrentHashMap<>();
 
@@ -36,6 +40,9 @@ public class AgoraChannelStrategy implements WebRTCChannelStrategy {
 
     @Override
     public String createSession(String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            throw new IllegalArgumentException("userId must not be null or empty");
+        }
         try {
             String sessionId = UUID.randomUUID().toString();
             String channelName = "skylark-" + sessionId;
@@ -67,12 +74,17 @@ public class AgoraChannelStrategy implements WebRTCChannelStrategy {
         }
         // Agora clients connect via Token + ChannelName, no SDP negotiation needed
         logger.debug("[Agora] Returning connection info for session: {}", sessionId);
-        return String.format(
-            "{\"token\":\"%s\",\"channelName\":\"%s\",\"appId\":\"%s\",\"uid\":\"%s\"}",
-            session.getClientToken(),
-            session.getChannelName(),
-            agoraClient.getAppId(),
-            session.getUserId());
+        try {
+            ObjectNode node = objectMapper.createObjectNode();
+            node.put("token", session.getClientToken());
+            node.put("channelName", session.getChannelName());
+            node.put("appId", agoraClient.getAppId());
+            node.put("uid", session.getUserId());
+            return objectMapper.writeValueAsString(node);
+        } catch (Exception e) {
+            logger.error("[Agora] Failed to serialize connection info for session: {}", sessionId, e);
+            throw new RuntimeException("Failed to serialize Agora connection info", e);
+        }
     }
 
     @Override

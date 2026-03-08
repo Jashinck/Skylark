@@ -372,6 +372,50 @@ class WebRTCChannelStrategyTest {
         verify(agoraClient).leaveChannel(anyString());
     }
     
+    @Test
+    void testAgoraStrategy_CreateSession_NullUserId() {
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        
+        assertThrows(IllegalArgumentException.class,
+            () -> strategy.createSession(null));
+    }
+    
+    @Test
+    void testAgoraStrategy_CreateSession_EmptyUserId() {
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        
+        assertThrows(IllegalArgumentException.class,
+            () -> strategy.createSession("  "));
+    }
+    
+    @Test
+    void testAgoraStrategy_ProcessOffer_ReturnsValidJson() throws Exception {
+        when(agoraClient.generateToken(anyString(), eq("user-123"), eq(3600)))
+            .thenReturn("agora-test-token");
+        when(agoraClient.getAppId()).thenReturn("test-app-id");
+        
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        String sessionId = strategy.createSession("user-123");
+        
+        String result = strategy.processOffer(sessionId, "ignored-sdp-offer");
+        
+        // Verify it's valid JSON by parsing with Jackson
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(result);
+        assertEquals("agora-test-token", node.get("token").asText());
+        assertEquals("test-app-id", node.get("appId").asText());
+        assertEquals("user-123", node.get("uid").asText());
+        assertTrue(node.get("channelName").asText().startsWith("skylark-"));
+    }
+    
+    @Test
+    void testAgoraStrategy_CloseSession_NonExistent_NoError() {
+        AgoraChannelStrategy strategy = new AgoraChannelStrategy(agoraClient);
+        
+        // Should not throw when closing a non-existent session
+        assertDoesNotThrow(() -> strategy.closeSession("non-existent-session"));
+    }
+    
     // ========== Strategy Interface Contract Tests ==========
     
     @Test
