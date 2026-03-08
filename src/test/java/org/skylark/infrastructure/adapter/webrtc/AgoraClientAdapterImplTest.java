@@ -158,7 +158,7 @@ class AgoraClientAdapterImplTest {
     }
 
     @Test
-    void testIsSdkAvailable_WithoutNativeSdk_ReturnsFalse() {
+    void testIsSdkAvailable_WithSdkOnClasspath_ReturnsTrue() {
         // Arrange
         WebRTCProperties properties = new WebRTCProperties();
         properties.getAgora().setAppId("test-app-id");
@@ -167,7 +167,7 @@ class AgoraClientAdapterImplTest {
         AgoraClientAdapterImpl adapter = new AgoraClientAdapterImpl(properties);
         adapter.init();
 
-        // The native Agora SDK is not installed in test environment
-        assertFalse(adapter.isSdkAvailable());
+        // The Agora SDK JAR (stub or real) is on the classpath via system scope dependency
+        assertTrue(adapter.isSdkAvailable());
     }
 }

@@ -1,9 +1,6 @@
 # Java
 target/
 *.class
-*.jar
-*.war
-*.ear
 *.log
 
 # Maven
