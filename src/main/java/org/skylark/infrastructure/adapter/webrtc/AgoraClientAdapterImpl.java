@@ -64,6 +64,8 @@ public class AgoraClientAdapterImpl implements AgoraClientAdapter {
     private static final int DEFAULT_CHANNELS = 1;
     /** Bytes per PCM16 sample */
     private static final int BYTES_PER_SAMPLE = 2;
+    /** Default token expiration for server-side channel join (24 hours) */
+    private static final int SERVER_TOKEN_EXPIRY_SECONDS = 86400;
 
     private final WebRTCProperties webRTCProperties;
     private final ConcurrentHashMap<String, AudioFrameCallback> callbacks = new ConcurrentHashMap<>();
@@ -275,7 +277,7 @@ public class AgoraClientAdapterImpl implements AgoraClientAdapter {
             localUser.publishAudio(audioTrack);
 
             // 8. Generate server token and connect to channel
-            String serverToken = generateToken(channelName, userId, 86400);
+            String serverToken = generateToken(channelName, userId, SERVER_TOKEN_EXPIRY_SECONDS);
             int connectResult = conn.connect(serverToken, channelName, userId);
             if (connectResult != 0) {
                 logger.error("[Agora] Failed to connect to channel: {}, error: {}", channelName, connectResult);
@@ -350,8 +352,10 @@ public class AgoraClientAdapterImpl implements AgoraClientAdapter {
 
         try {
             int samplesPerChannel = pcmData.length / (channels * BYTES_PER_SAMPLE);
-            long timestamp = System.currentTimeMillis();
-            ctx.pcmSender.send(pcmData, (int) timestamp, samplesPerChannel,
+            // The SDK send() API takes an int timestamp. We use a monotonic relative
+            // timestamp (lower 31 bits of currentTimeMillis) to avoid overflow issues.
+            int timestamp = (int) (System.currentTimeMillis() & 0x7FFFFFFF);
+            ctx.pcmSender.send(pcmData, timestamp, samplesPerChannel,
                 BYTES_PER_SAMPLE, channels, sampleRate);
         } catch (Exception e) {
             logger.error("[Agora] Failed to send audio frame on channel: {}", channelName, e);
