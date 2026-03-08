@@ -1,5 +1,7 @@
 package org.skylark.infrastructure.adapter.webrtc.strategy;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -400,8 +402,8 @@ class WebRTCChannelStrategyTest {
         String result = strategy.processOffer(sessionId, "ignored-sdp-offer");
         
         // Verify it's valid JSON by parsing with Jackson
-        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(result);
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode node = mapper.readTree(result);
         assertEquals("agora-test-token", node.get("token").asText());
         assertEquals("test-app-id", node.get("appId").asText());
         assertEquals("user-123", node.get("uid").asText());
