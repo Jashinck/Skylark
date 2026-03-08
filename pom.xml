@@ -104,14 +104,11 @@
         </dependency>
 
         <!-- Agora RTC Server SDK for Linux (声网 RTC 服务端 SDK) -->
-        <!-- Stub JAR provided in libs/ for compilation. Replace with real SDK from: -->
-        <!-- https://doc.shengwang.cn/doc/rtc-server-sdk/java/resources -->
+        <!-- Maven 中央仓库直接引入，参考：share/PAAS_RTC_INTEGRATION_SPEC.md §2.1 -->
         <dependency>
             <groupId>io.agora.rtc</groupId>
-            <artifactId>linux-sdk</artifactId>
+            <artifactId>linux-java-sdk</artifactId>
             <version>4.4.31.4</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/agora-linux-sdk-4.4.31.4.jar</systemPath>
         </dependency>
 
         <!-- AgentScope - AI Agent Framework -->

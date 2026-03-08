@@ -167,7 +167,7 @@ class AgoraClientAdapterImplTest {
         AgoraClientAdapterImpl adapter = new AgoraClientAdapterImpl(properties);
         adapter.init();
 
-        // The Agora SDK JAR (stub or real) is on the classpath via system scope dependency
+        // The Agora SDK is on the classpath via Maven Central dependency (io.agora.rtc:linux-sdk)
         assertTrue(adapter.isSdkAvailable());
     }
 }

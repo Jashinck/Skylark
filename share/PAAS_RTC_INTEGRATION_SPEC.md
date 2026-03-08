@@ -106,19 +106,19 @@ webrtc:
 <!-- pom.xml 新增依赖 -->
 <dependency>
     <groupId>io.agora.rtc</groupId>
-    <artifactId>linux-sdk</artifactId>
+    <artifactId>linux-java-sdk</artifactId>
     <version>4.4.31.4</version>
 </dependency>
 ```
 
-> **说明**：`io.agora.rtc:linux-sdk` 包含 RTC 服务端 SDK 及 Token 生成工具。若 Maven 中央仓库无法获取，可从 [https://doc.shengwang.cn/doc/rtc-server-sdk/java/resources](https://doc.shengwang.cn/doc/rtc-server-sdk/java/resources) 下载本地 JAR 包，并通过 `system scope` 或本地 Maven 仓库引入：
+> **说明**：`io.agora.rtc:linux-java-sdk` 包含 RTC 服务端 SDK。Maven 中央仓库可直接引入。若 Maven 中央仓库无法获取，可从 [https://doc.shengwang.cn/doc/rtc-server-sdk/java/resources](https://doc.shengwang.cn/doc/rtc-server-sdk/java/resources) 下载本地 JAR 包，并通过 `system scope` 或本地 Maven 仓库引入：
 > ```xml
 > <dependency>
 >     <groupId>io.agora.rtc</groupId>
->     <artifactId>linux-sdk</artifactId>
+>     <artifactId>linux-java-sdk</artifactId>
 >     <version>4.4.31.4</version>
 >     <scope>system</scope>
->     <systemPath>${project.basedir}/libs/agora-linux-sdk-4.4.31.4.jar</systemPath>
+>     <systemPath>${project.basedir}/libs/agora-linux-java-sdk-4.4.31.4.jar</systemPath>
 > </dependency>
 > ```
 
@@ -1618,12 +1618,11 @@ public ResponseEntity<Void> closeAliRTCSession(...)
 ### 6.5 Maven pom.xml 依赖添加
 
 ```xml
-<!-- 声网 Server SDK for Java -->
+<!-- 声网 Server SDK for Java（Maven 中央仓库直接引入） -->
 <dependency>
     <groupId>io.agora.rtc</groupId>
-    <artifactId>linux-sdk</artifactId>
+    <artifactId>linux-java-sdk</artifactId>
     <version>4.4.31.4</version>
-    <!-- 若 Maven 仓库不可达，改用 system scope + libs/ 目录 -->
 </dependency>
 
 <!-- 声网 Token Builder（用于生成 RTC Token） -->

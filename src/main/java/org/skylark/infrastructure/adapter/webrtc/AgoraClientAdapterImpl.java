@@ -69,26 +69,24 @@ public class AgoraClientAdapterImpl implements AgoraClientAdapter {
                 logger.warn("[Agora] appCertificate not configured. Token generation will not be available.");
             }
 
-            // Attempt to initialize the RTC Engine (requires native SDK JAR)
+            // Attempt to detect the RTC Server SDK (requires io.agora.rtc:linux-java-sdk)
             try {
-                // Agora RTC Server SDK (io.agora.rtc:linux-sdk) is required for channel operations.
-                // When the SDK JAR is installed, the following classes should be used:
+                // Agora RTC Server SDK (io.agora.rtc:linux-java-sdk) is included via Maven Central.
+                // When native .so libraries are available, the following pattern should be used:
                 //
-                // RtcEngineConfig engineConfig = new RtcEngineConfig();
-                // engineConfig.mAppId = config.getAppId();
-                // engineConfig.mEventHandler = new RtcEngine.RtcEventHandler() { ... };
-                // rtcEngine = RtcEngine.create(engineConfig);
-                // rtcEngine.enableExternalAudioSource(true, config.getSampleRate(), config.getChannels());
-                // rtcEngine.registerAudioFrameObserver(buildAudioFrameObserver());
+                // AgoraServiceConfig serviceConfig = new AgoraServiceConfig();
+                // serviceConfig.setAppId(config.getAppId());
+                // AgoraService agoraService = new AgoraService();
+                // agoraService.initialize(serviceConfig);
                 // sdkAvailable = true;
 
-                Class.forName("io.agora.rtc.RtcEngine");
-                logger.info("[Agora] ✅ Agora RTC Server SDK detected");
+                Class.forName("io.agora.rtc.AgoraService");
+                logger.info("[Agora] ✅ Agora RTC Server SDK detected on classpath");
                 sdkAvailable = true;
             } catch (ClassNotFoundException e) {
-                logger.info("[Agora] Agora RTC Server SDK not installed. "
+                logger.info("[Agora] Agora RTC Server SDK not found on classpath. "
                     + "Channel join/leave and audio frame operations will be no-op. "
-                    + "Install io.agora.rtc:linux-sdk for full functionality.");
+                    + "Add io.agora.rtc:linux-java-sdk dependency for full functionality.");
                 sdkAvailable = false;
             }
         } catch (Exception e) {
