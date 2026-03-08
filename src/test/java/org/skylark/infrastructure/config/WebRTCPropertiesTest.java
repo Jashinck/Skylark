@@ -203,6 +203,14 @@ class WebRTCPropertiesTest {
         // Act - change to livekit
         properties.setStrategy("livekit");
         assertEquals("livekit", properties.getStrategy());
+        
+        // Act - change to agora
+        properties.setStrategy("agora");
+        assertEquals("agora", properties.getStrategy());
+        
+        // Act - change to alirtc
+        properties.setStrategy("alirtc");
+        assertEquals("alirtc", properties.getStrategy());
     }
     
     @Test
@@ -232,5 +240,86 @@ class WebRTCPropertiesTest {
         assertEquals("", liveKit.getUrl());
         assertEquals("", liveKit.getApiKey());
         assertEquals("", liveKit.getApiSecret());
+    }
+    
+    @Test
+    void testAgoraDefaultValues() {
+        // Arrange & Act
+        WebRTCProperties properties = new WebRTCProperties();
+        WebRTCProperties.Agora agora = properties.getAgora();
+        
+        // Assert
+        assertNotNull(agora);
+        assertEquals("", agora.getAppId());
+        assertEquals("", agora.getAppCertificate());
+        assertEquals("cn", agora.getRegion());
+        assertEquals(16000, agora.getSampleRate());
+        assertEquals(1, agora.getChannels());
+        assertEquals(3600, agora.getTokenExpireSeconds());
+    }
+    
+    @Test
+    void testAgoraConfiguration() {
+        // Arrange
+        WebRTCProperties properties = new WebRTCProperties();
+        WebRTCProperties.Agora agora = properties.getAgora();
+        
+        // Act
+        agora.setAppId("test-agora-app-id");
+        agora.setAppCertificate("test-agora-cert");
+        agora.setRegion("na");
+        agora.setSampleRate(48000);
+        agora.setChannels(2);
+        agora.setTokenExpireSeconds(7200);
+        
+        // Assert
+        assertEquals("test-agora-app-id", agora.getAppId());
+        assertEquals("test-agora-cert", agora.getAppCertificate());
+        assertEquals("na", agora.getRegion());
+        assertEquals(48000, agora.getSampleRate());
+        assertEquals(2, agora.getChannels());
+        assertEquals(7200, agora.getTokenExpireSeconds());
+    }
+    
+    @Test
+    void testAliRTCDefaultValues() {
+        // Arrange & Act
+        WebRTCProperties properties = new WebRTCProperties();
+        WebRTCProperties.AliRTC alirtc = properties.getAlirtc();
+        
+        // Assert
+        assertNotNull(alirtc);
+        assertEquals("", alirtc.getAppId());
+        assertEquals("", alirtc.getAppKey());
+        assertEquals("", alirtc.getAppSecret());
+        assertEquals("cn", alirtc.getRegion());
+        assertEquals(16000, alirtc.getSampleRate());
+        assertEquals(1, alirtc.getChannels());
+        assertEquals(3600, alirtc.getTokenExpireSeconds());
+    }
+    
+    @Test
+    void testAliRTCConfiguration() {
+        // Arrange
+        WebRTCProperties properties = new WebRTCProperties();
+        WebRTCProperties.AliRTC alirtc = properties.getAlirtc();
+        
+        // Act
+        alirtc.setAppId("test-alirtc-app-id");
+        alirtc.setAppKey("test-alirtc-key");
+        alirtc.setAppSecret("test-alirtc-secret");
+        alirtc.setRegion("eu");
+        alirtc.setSampleRate(32000);
+        alirtc.setChannels(2);
+        alirtc.setTokenExpireSeconds(1800);
+        
+        // Assert
+        assertEquals("test-alirtc-app-id", alirtc.getAppId());
+        assertEquals("test-alirtc-key", alirtc.getAppKey());
+        assertEquals("test-alirtc-secret", alirtc.getAppSecret());
+        assertEquals("eu", alirtc.getRegion());
+        assertEquals(32000, alirtc.getSampleRate());
+        assertEquals(2, alirtc.getChannels());
+        assertEquals(1800, alirtc.getTokenExpireSeconds());
     }
 }

@@ -4,8 +4,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.skylark.infrastructure.adapter.webrtc.AgoraClientAdapter;
+import org.skylark.infrastructure.adapter.webrtc.AliRTCClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.LiveKitClientAdapter;
+import org.skylark.infrastructure.adapter.webrtc.strategy.AgoraChannelStrategy;
+import org.skylark.infrastructure.adapter.webrtc.strategy.AliRTCChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.KurentoChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.LiveKitChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.WebRTCChannelStrategy;
@@ -31,6 +35,12 @@ class WebRTCStrategyConfigTest {
     @Mock
     private LiveKitClientAdapter liveKitClientAdapter;
     
+    @Mock
+    private AgoraClientAdapter agoraClientAdapter;
+    
+    @Mock
+    private AliRTCClientAdapter aliRTCClientAdapter;
+    
     private WebRTCStrategyConfig createConfig(String strategyName) throws Exception {
         WebRTCProperties properties = new WebRTCProperties();
         properties.setStrategy(strategyName);
@@ -48,6 +58,14 @@ class WebRTCStrategyConfigTest {
         Field liveKitField = WebRTCStrategyConfig.class.getDeclaredField("liveKitClientAdapter");
         liveKitField.setAccessible(true);
         liveKitField.set(config, liveKitClientAdapter);
+        
+        Field agoraField = WebRTCStrategyConfig.class.getDeclaredField("agoraClientAdapter");
+        agoraField.setAccessible(true);
+        agoraField.set(config, agoraClientAdapter);
+        
+        Field aliRTCField = WebRTCStrategyConfig.class.getDeclaredField("aliRTCClientAdapter");
+        aliRTCField.setAccessible(true);
+        aliRTCField.set(config, aliRTCClientAdapter);
         
         return config;
     }
@@ -86,6 +104,28 @@ class WebRTCStrategyConfigTest {
     }
     
     @Test
+    void testAgoraStrategySelected() throws Exception {
+        WebRTCStrategyConfig config = createConfig("agora");
+        
+        WebRTCChannelStrategy strategy = config.webRTCChannelStrategy();
+        
+        assertNotNull(strategy);
+        assertInstanceOf(AgoraChannelStrategy.class, strategy);
+        assertEquals("agora", strategy.getStrategyName());
+    }
+    
+    @Test
+    void testAliRTCStrategySelected() throws Exception {
+        WebRTCStrategyConfig config = createConfig("alirtc");
+        
+        WebRTCChannelStrategy strategy = config.webRTCChannelStrategy();
+        
+        assertNotNull(strategy);
+        assertInstanceOf(AliRTCChannelStrategy.class, strategy);
+        assertEquals("alirtc", strategy.getStrategyName());
+    }
+    
+    @Test
     void testDefaultStrategyIsWebSocket() throws Exception {
         WebRTCStrategyConfig config = createConfig("unknown");
         
@@ -103,5 +143,25 @@ class WebRTCStrategyConfigTest {
         
         assertNotNull(strategy);
         assertInstanceOf(KurentoChannelStrategy.class, strategy);
+    }
+    
+    @Test
+    void testAgoraStrategyCaseInsensitive() throws Exception {
+        WebRTCStrategyConfig config = createConfig("AGORA");
+        
+        WebRTCChannelStrategy strategy = config.webRTCChannelStrategy();
+        
+        assertNotNull(strategy);
+        assertInstanceOf(AgoraChannelStrategy.class, strategy);
+    }
+    
+    @Test
+    void testAliRTCStrategyCaseInsensitive() throws Exception {
+        WebRTCStrategyConfig config = createConfig("ALIRTC");
+        
+        WebRTCChannelStrategy strategy = config.webRTCChannelStrategy();
+        
+        assertNotNull(strategy);
+        assertInstanceOf(AliRTCChannelStrategy.class, strategy);
     }
 }
