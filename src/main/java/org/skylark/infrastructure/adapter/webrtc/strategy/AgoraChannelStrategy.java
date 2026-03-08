@@ -35,6 +35,10 @@ public class AgoraChannelStrategy implements WebRTCChannelStrategy {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    private static final int DEFAULT_SAMPLE_RATE = 16000;
+    private static final int DEFAULT_CHANNELS = 1;
+    private static final String TTS_AUDIO_TYPE = "tts_audio";
+
     private final AgoraClientAdapter agoraClient;
     private final OrchestrationService orchestrationService;
     private final ConcurrentHashMap<String, AgoraSessionInfo> sessions = new ConcurrentHashMap<>();
@@ -65,15 +69,14 @@ public class AgoraChannelStrategy implements WebRTCChannelStrategy {
 
             // 2. Register audio frame callback: remote PCM → OrchestrationService pipeline
             //    TTS output from pipeline → sendAudioFrame back to the remote user
-            int sampleRate = 16000;
-            int channels = 1;
             OrchestrationService.ResponseCallback responseCallback = (sid, type, data) -> {
-                if ("tts_audio".equals(type) && data instanceof Map) {
+                if (TTS_AUDIO_TYPE.equals(type) && data instanceof Map) {
                     @SuppressWarnings("unchecked")
                     String audioBase64 = (String) ((Map<String, Object>) data).get("audio");
                     if (audioBase64 != null) {
                         byte[] ttsAudio = Base64.getDecoder().decode(audioBase64);
-                        agoraClient.sendAudioFrame(channelName, ttsAudio, sampleRate, channels);
+                        agoraClient.sendAudioFrame(channelName, ttsAudio,
+                            DEFAULT_SAMPLE_RATE, DEFAULT_CHANNELS);
                     }
                 }
             };

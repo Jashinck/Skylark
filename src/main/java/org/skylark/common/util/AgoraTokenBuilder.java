@@ -28,6 +28,7 @@ public class AgoraTokenBuilder {
 
     private static final String VERSION = "007";
     private static final int SERVICE_TYPE_RTC = 1;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     // RTC privileges
     private static final int PRIVILEGE_JOIN_CHANNEL = 1;
@@ -66,7 +67,7 @@ public class AgoraTokenBuilder {
 
         int now = (int) (System.currentTimeMillis() / 1000);
         int expire = now + tokenExpireSeconds;
-        int salt = new SecureRandom().nextInt();
+        int salt = SECURE_RANDOM.nextInt();
         int ts = now;
 
         int privilegeExpire = privilegeExpireSeconds > 0 ? now + privilegeExpireSeconds : 0;
