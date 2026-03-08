@@ -228,50 +228,78 @@ public interface AgoraClientAdapter {
 
 1. **初始化**（`@PostConstruct`）：
    - 读取 `webRTCProperties.getAgora()` 获取 `appId`、`appCertificate`
-   - 调用 `AgoraRtcEngine.create(appId, handler)` 创建引擎实例
-   - 设置频道场景：`AgoraRtcEngine.setChannelProfile(CHANNEL_PROFILE_LIVE_BROADCASTING)`
-   - 设置客户端角色：`AgoraRtcEngine.setClientRole(CLIENT_ROLE_BROADCASTER)`
-   - 注册原始音频帧观测器：`AgoraRtcEngine.registerAudioFrameObserver(observer)`
+   - 创建 `AgoraService` 单例并调用 `initialize(AgoraServiceConfig)` 初始化
+   - 设置 `enableAudioProcessor=1`, `enableAudioDevice=0`, `enableVideo=0`（纯音频服务端模式）
 
-2. **Token 生成**：使用 `RtcTokenBuilder2.buildTokenWithUserAccount(appId, appCertificate, channelName, userId, role, tokenExpireSeconds, privilegeExpireSeconds)` 生成 Token
+2. **Token 生成**：使用内置 `AgoraTokenBuilder` 纯 Java 实现（HMAC-SHA256, AccessToken2/007 格式），无需依赖外部 SDK
 
-3. **加入频道**：`AgoraRtcEngine.joinChannel(token, channelName, uid, options)` — 服务端以 `uid=0`（自动分配）或指定 UID 加入
+3. **加入频道**（每个通道独立连接）：
+   - 创建 `AgoraRtcConn` 连接（`autoSubscribeAudio=1`, `clientRoleType=BROADCASTER`）
+   - 注册 `DefaultRtcConnObserver` 监听连接/断连/用户加入离开事件
+   - 调用 `conn.connect(token, channelName, userId)` 加入频道
+   - 获取 `AgoraLocalUser`，调用 `subscribeAllAudio()` 订阅所有远端音频
 
-4. **发送音频帧**：通过 `AgoraRtcEngine.pushExternalAudioFrame(frame)` 推送 PCM 数据，需先调用 `enableExternalAudioSource(true, sampleRate, channels)`
+4. **接收音频帧**（核心音频监听器）：
+   - 在 `AgoraLocalUser` 上注册 `DefaultAudioFrameObserver`
+   - 实现 `onPlaybackAudioFrameBeforeMixing(user, channelId, userId, frame, vadResult)` 回调
+   - 从 `AudioFrame.getBuffer()` 提取 PCM 数据
+   - 转发给已注册的 `AudioFrameCallback`（即 `OrchestrationService.processAudioStream()`）
 
-5. **接收音频帧**：实现 `IAudioFrameObserver.onPlaybackAudioFrameBeforeMixing()` 回调，将 PCM 数据传入 `OrchestrationService.processAudioStream()`
+5. **发送音频帧**：
+   - 通过 `AgoraMediaNodeFactory.createAudioPcmDataSender()` 创建 PCM 发送器
+   - 通过 `AgoraService.createCustomAudioTrackPcm(sender)` 创建自定义音频轨道
+   - 调用 `localUser.publishAudio(audioTrack)` 发布音频
+   - TTS 输出通过 `sender.send(pcmData, timestamp, samplesPerChannel, bytesPerSample, channels, sampleRate)` 推送
 
-6. **资源清理**（`@PreDestroy`）：`leaveChannel()` → `AgoraRtcEngine.destroy()`
+6. **资源清理**（`@PreDestroy`）：
+   - 逐通道清理：`unpublishAudio()` → `audioTrack.destroy()` → `pcmSender.destroy()` → `conn.disconnect()` → `conn.destroy()`
+   - 全局清理：`agoraService.destroy()`
 
 ```java
 package org.skylark.infrastructure.adapter.webrtc;
 
-import io.agora.rtc.RtcEngine;
-import io.agora.rtc.RtcEngineConfig;
-import io.agora.rtc.IAudioFrameObserver;
-import io.agora.rtc.models.AudioFrame;
-import io.agora.token.RtcTokenBuilder2;
+import io.agora.rtc.AgoraLocalAudioTrack;
+import io.agora.rtc.AgoraLocalUser;
+import io.agora.rtc.AgoraAudioPcmDataSender;
+import io.agora.rtc.AgoraMediaNodeFactory;
+import io.agora.rtc.AgoraRtcConn;
+import io.agora.rtc.AgoraService;
+import io.agora.rtc.AgoraServiceConfig;
+import io.agora.rtc.AudioFrame;
+import io.agora.rtc.DefaultAudioFrameObserver;
+import io.agora.rtc.DefaultLocalUserObserver;
+import io.agora.rtc.DefaultRtcConnObserver;
+import io.agora.rtc.RtcConnConfig;
+import io.agora.rtc.RtcConnInfo;
+import io.agora.rtc.VadProcessResult;
+
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.skylark.common.util.AgoraTokenBuilder;
 import org.skylark.infrastructure.config.WebRTCProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class AgoraClientAdapterImpl implements AgoraClientAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(AgoraClientAdapterImpl.class);
+    private static final int DEFAULT_SAMPLE_RATE = 16000;
+    private static final int DEFAULT_CHANNELS = 1;
+    private static final int BYTES_PER_SAMPLE = 2;
 
     private final WebRTCProperties webRTCProperties;
-    // channelName -> AudioFrameCallback
     private final ConcurrentHashMap<String, AudioFrameCallback> callbacks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ChannelContext> channelContexts = new ConcurrentHashMap<>();
 
-    private RtcEngine rtcEngine;
-    private volatile boolean available = false;
+    private volatile AgoraService agoraService;
+    private volatile boolean sdkAvailable = false;
+    private volatile boolean tokenAvailable = false;
 
     @Autowired
     public AgoraClientAdapterImpl(WebRTCProperties webRTCProperties) {
@@ -283,138 +311,168 @@ public class AgoraClientAdapterImpl implements AgoraClientAdapter {
         try {
             WebRTCProperties.Agora config = webRTCProperties.getAgora();
             if (config.getAppId() == null || config.getAppId().isEmpty()) {
-                logger.warn("[Agora] appId not configured. Agora features will not be available.");
+                logger.warn("[Agora] appId not configured.");
                 return;
             }
-
-            RtcEngineConfig engineConfig = new RtcEngineConfig();
-            engineConfig.mAppId = config.getAppId();
-            engineConfig.mEventHandler = new RtcEngine.RtcEventHandler() {
-                @Override
-                public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
-                    logger.info("[Agora] Joined channel: {}, uid: {}", channel, uid);
-                }
-                @Override
-                public void onUserOffline(int uid, int reason) {
-                    logger.info("[Agora] User offline: uid={}, reason={}", uid, reason);
-                }
-                @Override
-                public void onError(int err) {
-                    logger.error("[Agora] Error: {}", err);
-                }
-            };
-
-            rtcEngine = RtcEngine.create(engineConfig);
-            // 外部音频源输入（TTS 推流）
-            rtcEngine.enableExternalAudioSource(true,
-                config.getSampleRate(), config.getChannels());
-            // 注册原始音频帧观测器（ASR 收流）
-            rtcEngine.registerAudioFrameObserver(buildAudioFrameObserver());
-
-            available = true;
-            logger.info("✅ Agora RTC Engine initialized successfully");
+            // Token 生成仅需 appId + appCertificate（纯 Java 实现）
+            if (config.getAppCertificate() != null && !config.getAppCertificate().isEmpty()) {
+                tokenAvailable = true;
+            }
+            // 初始化 AgoraService（需要 native .so 库）
+            initAgoraService(config);
         } catch (Exception e) {
-            logger.error("[Agora] Failed to initialize RTC Engine", e);
-            available = false;
+            logger.error("[Agora] Failed to initialize adapter", e);
         }
     }
 
-    @Override
-    public String generateToken(String channelName, String userId, int expireSeconds) {
-        WebRTCProperties.Agora config = webRTCProperties.getAgora();
-        return RtcTokenBuilder2.buildTokenWithUserAccount(
-            config.getAppId(),
-            config.getAppCertificate(),
-            channelName,
-            userId,
-            RtcTokenBuilder2.Role.ROLE_PUBLISHER,
-            expireSeconds,
-            expireSeconds
-        );
+    private void initAgoraService(WebRTCProperties.Agora config) {
+        try {
+            AgoraServiceConfig serviceConfig = new AgoraServiceConfig();
+            serviceConfig.setAppId(config.getAppId());
+            serviceConfig.setEnableAudioDevice(0);
+            serviceConfig.setEnableAudioProcessor(1);
+            serviceConfig.setEnableVideo(0);
+
+            AgoraService service = new AgoraService();
+            int ret = service.initialize(serviceConfig);
+            if (ret != 0) {
+                logger.warn("[Agora] AgoraService.initialize() returned: {}", ret);
+                return;
+            }
+            this.agoraService = service;
+            sdkAvailable = true;
+            logger.info("[Agora] ✅ AgoraService initialized successfully");
+        } catch (UnsatisfiedLinkError | Exception e) {
+            logger.info("[Agora] Native .so not available: {}", e.getMessage());
+            sdkAvailable = false;
+        }
     }
 
     @Override
     public void joinChannel(String channelName, String userId) {
-        if (rtcEngine == null) throw new IllegalStateException("Agora Engine not initialized");
-        String token = generateToken(channelName, userId, 3600);
-        // uid=0 让 SDK 自动分配服务端 UID
-        int ret = rtcEngine.joinChannel(token, channelName, null, 0);
-        if (ret != 0) {
-            throw new RuntimeException("[Agora] joinChannel failed, ret=" + ret);
-        }
-        logger.info("[Agora] Joining channel: {}", channelName);
-    }
+        if (!sdkAvailable || agoraService == null) return;
 
-    @Override
-    public void leaveChannel(String channelName) {
-        if (rtcEngine != null) {
-            rtcEngine.leaveChannel();
-            callbacks.remove(channelName);
-            logger.info("[Agora] Left channel: {}", channelName);
-        }
+        // 1. 创建 RTC 连接
+        RtcConnConfig connConfig = new RtcConnConfig();
+        connConfig.setAutoSubscribeAudio(1);
+        connConfig.setAutoSubscribeVideo(0);
+        connConfig.setClientRoleType(1);  // BROADCASTER
+
+        AgoraRtcConn conn = agoraService.agoraRtcConnCreate(connConfig);
+
+        // 2. 注册连接观测器
+        conn.registerObserver(new DefaultRtcConnObserver() {
+            @Override
+            public void onConnected(AgoraRtcConn c, RtcConnInfo info, int reason) {
+                logger.info("[Agora] Connected to channel: {}", channelName);
+            }
+            @Override
+            public void onUserJoined(AgoraRtcConn c, String remoteUid) {
+                logger.info("[Agora] User joined: {}", remoteUid);
+            }
+        });
+
+        // 3. 获取 LocalUser，订阅远端音频
+        AgoraLocalUser localUser = conn.getLocalUser();
+        localUser.setUserRole(1);
+        localUser.subscribeAllAudio();
+
+        // 4. 注册音频帧观测器 — 核心音频监听器
+        localUser.setPlaybackAudioFrameBeforeMixingParameters(DEFAULT_SAMPLE_RATE, DEFAULT_CHANNELS);
+        localUser.registerAudioFrameObserver(new DefaultAudioFrameObserver() {
+            @Override
+            public int onPlaybackAudioFrameBeforeMixing(AgoraLocalUser user, String chId,
+                    String remoteUid, AudioFrame frame, VadProcessResult vad) {
+                AudioFrameCallback cb = callbacks.get(channelName);
+                if (cb != null) {
+                    ByteBuffer buffer = frame.getBuffer();
+                    if (buffer != null) {
+                        byte[] pcm = new byte[buffer.remaining()];
+                        buffer.get(pcm);
+                        cb.onAudioFrame(channelName, remoteUid, pcm,
+                            frame.getSamplesPerSec(), frame.getChannels());
+                    }
+                }
+                return 1;
+            }
+
+            @Override
+            public int getObservedAudioFramePosition() {
+                return 0x0020; // POSITION_BEFORE_MIXING
+            }
+        });
+
+        // 5. 创建 PCM 发送器和音频轨道（用于 TTS 推流）
+        AgoraMediaNodeFactory factory = agoraService.createMediaNodeFactory();
+        AgoraAudioPcmDataSender pcmSender = factory.createAudioPcmDataSender();
+        AgoraLocalAudioTrack audioTrack = agoraService.createCustomAudioTrackPcm(pcmSender);
+        audioTrack.setEnabled(1);
+        localUser.publishAudio(audioTrack);
+
+        // 6. 连接频道
+        String token = generateToken(channelName, userId, 86400);
+        conn.connect(token, channelName, userId);
+
+        // 7. 保存通道上下文
+        channelContexts.put(channelName, new ChannelContext(conn, localUser, pcmSender, audioTrack, factory));
     }
 
     @Override
     public void sendAudioFrame(String channelName, byte[] pcmData, int sampleRate, int channels) {
-        if (rtcEngine == null) return;
-        AudioFrame frame = new AudioFrame();
-        frame.type = AudioFrame.FRAME_TYPE_PCM16;
-        frame.buffer = pcmData;
-        frame.samples = pcmData.length / 2; // 16-bit = 2 bytes per sample
-        frame.bytesPerSample = 2;
-        frame.channels = channels;
-        frame.samplesPerSec = sampleRate;
-        rtcEngine.pushExternalAudioFrame(frame, System.currentTimeMillis());
+        ChannelContext ctx = channelContexts.get(channelName);
+        if (ctx == null) return;
+        int samplesPerChannel = pcmData.length / (channels * BYTES_PER_SAMPLE);
+        ctx.pcmSender.send(pcmData, (int) System.currentTimeMillis(),
+            samplesPerChannel, BYTES_PER_SAMPLE, channels, sampleRate);
     }
 
     @Override
-    public void registerAudioFrameCallback(String channelName, AudioFrameCallback callback) {
-        callbacks.put(channelName, callback);
-    }
-
-    @Override
-    public boolean isAvailable() {
-        return available && rtcEngine != null;
-    }
-
-    @Override
-    public String getAppId() {
-        return webRTCProperties.getAgora().getAppId();
-    }
-
-    private IAudioFrameObserver buildAudioFrameObserver() {
-        return new IAudioFrameObserver() {
-            @Override
-            public boolean onPlaybackAudioFrameBeforeMixing(String channelId, int uid, AudioFrame frame) {
-                AudioFrameCallback cb = callbacks.get(channelId);
-                if (cb != null) {
-                    cb.onAudioFrame(channelId, String.valueOf(uid),
-                        frame.buffer, frame.samplesPerSec, frame.channels);
-                }
-                return true;
-            }
-            // 其他回调方法返回 false（不处理）
-            @Override public boolean onRecordAudioFrame(String channelId, AudioFrame frame) { return false; }
-            @Override public boolean onPlaybackAudioFrame(String channelId, AudioFrame frame) { return false; }
-            @Override public boolean onMixedAudioFrame(String channelId, AudioFrame frame) { return false; }
-            @Override public int getObservedAudioFramePosition() { return 0x0020; } // POSITION_BEFORE_MIXING
-            @Override public AudioParams getPlaybackAudioParams() { return new AudioParams(16000, 1, 2, 1024); }
-            @Override public AudioParams getRecordAudioParams() { return new AudioParams(16000, 1, 2, 1024); }
-            @Override public AudioParams getMixedAudioParams() { return new AudioParams(16000, 1, 2, 1024); }
-            @Override public AudioParams getEarMonitoringAudioParams() { return new AudioParams(16000, 1, 2, 1024); }
-        };
+    public void leaveChannel(String channelName) {
+        callbacks.remove(channelName);
+        ChannelContext ctx = channelContexts.remove(channelName);
+        if (ctx != null) {
+            ctx.localUser.unpublishAudio(ctx.audioTrack);
+            ctx.localUser.unregisterAudioFrameObserver();
+            ctx.conn.disconnect();
+            ctx.audioTrack.destroy();
+            ctx.pcmSender.destroy();
+            ctx.factory.destroy();
+            ctx.conn.destroy();
+        }
     }
 
     @PreDestroy
     public void destroy() {
-        if (rtcEngine != null) {
-            rtcEngine.leaveChannel();
-            RtcEngine.destroy();
-            rtcEngine = null;
-            available = false;
-            logger.info("[Agora] RTC Engine destroyed");
+        for (String ch : channelContexts.keySet()) leaveChannel(ch);
+        callbacks.clear();
+        if (agoraService != null) {
+            agoraService.destroy();
+            agoraService = null;
+        }
+        sdkAvailable = false;
+        tokenAvailable = false;
+    }
+
+    // ChannelContext 保存每个频道的 SDK 资源
+    static class ChannelContext {
+        final AgoraRtcConn conn;
+        final AgoraLocalUser localUser;
+        final AgoraAudioPcmDataSender pcmSender;
+        final AgoraLocalAudioTrack audioTrack;
+        final AgoraMediaNodeFactory factory;
+
+        ChannelContext(AgoraRtcConn conn, AgoraLocalUser localUser,
+                       AgoraAudioPcmDataSender pcmSender, AgoraLocalAudioTrack audioTrack,
+                       AgoraMediaNodeFactory factory) {
+            this.conn = conn;
+            this.localUser = localUser;
+            this.pcmSender = pcmSender;
+            this.audioTrack = audioTrack;
+            this.factory = factory;
         }
     }
+
+    // ... generateToken(), registerAudioFrameCallback(), isAvailable(), getAppId() 省略
 }
 ```
 
