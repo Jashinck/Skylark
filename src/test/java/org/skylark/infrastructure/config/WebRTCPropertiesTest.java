@@ -207,10 +207,6 @@ class WebRTCPropertiesTest {
         // Act - change to agora
         properties.setStrategy("agora");
         assertEquals("agora", properties.getStrategy());
-        
-        // Act - change to alirtc
-        properties.setStrategy("alirtc");
-        assertEquals("alirtc", properties.getStrategy());
     }
     
     @Test
@@ -279,47 +275,5 @@ class WebRTCPropertiesTest {
         assertEquals(48000, agora.getSampleRate());
         assertEquals(2, agora.getChannels());
         assertEquals(7200, agora.getTokenExpireSeconds());
-    }
-    
-    @Test
-    void testAliRTCDefaultValues() {
-        // Arrange & Act
-        WebRTCProperties properties = new WebRTCProperties();
-        WebRTCProperties.AliRTC alirtc = properties.getAlirtc();
-        
-        // Assert
-        assertNotNull(alirtc);
-        assertEquals("", alirtc.getAppId());
-        assertEquals("", alirtc.getAppKey());
-        assertEquals("", alirtc.getAppSecret());
-        assertEquals("cn", alirtc.getRegion());
-        assertEquals(16000, alirtc.getSampleRate());
-        assertEquals(1, alirtc.getChannels());
-        assertEquals(3600, alirtc.getTokenExpireSeconds());
-    }
-    
-    @Test
-    void testAliRTCConfiguration() {
-        // Arrange
-        WebRTCProperties properties = new WebRTCProperties();
-        WebRTCProperties.AliRTC alirtc = properties.getAlirtc();
-        
-        // Act
-        alirtc.setAppId("test-alirtc-app-id");
-        alirtc.setAppKey("test-alirtc-key");
-        alirtc.setAppSecret("test-alirtc-secret");
-        alirtc.setRegion("eu");
-        alirtc.setSampleRate(32000);
-        alirtc.setChannels(2);
-        alirtc.setTokenExpireSeconds(1800);
-        
-        // Assert
-        assertEquals("test-alirtc-app-id", alirtc.getAppId());
-        assertEquals("test-alirtc-key", alirtc.getAppKey());
-        assertEquals("test-alirtc-secret", alirtc.getAppSecret());
-        assertEquals("eu", alirtc.getRegion());
-        assertEquals(32000, alirtc.getSampleRate());
-        assertEquals(2, alirtc.getChannels());
-        assertEquals(1800, alirtc.getTokenExpireSeconds());
     }
 }

@@ -3,11 +3,9 @@ package org.skylark.infrastructure.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.skylark.infrastructure.adapter.webrtc.AgoraClientAdapter;
-import org.skylark.infrastructure.adapter.webrtc.AliRTCClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.LiveKitClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.strategy.AgoraChannelStrategy;
-import org.skylark.infrastructure.adapter.webrtc.strategy.AliRTCChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.KurentoChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.LiveKitChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.WebRTCChannelStrategy;
@@ -21,7 +19,7 @@ import org.springframework.context.annotation.Configuration;
  * WebRTC 策略配置
  * 
  * <p>Configures the active WebRTC channel strategy based on the
- * {@code webrtc.strategy} property. Supports: websocket, kurento, livekit, agora, alirtc.</p>
+ * {@code webrtc.strategy} property. Supports: websocket, kurento, livekit, agora.</p>
  * 
  * @author Skylark Team
  * @version 1.0.0
@@ -42,9 +40,6 @@ public class WebRTCStrategyConfig {
     
     @Autowired
     private AgoraClientAdapter agoraClientAdapter;
-    
-    @Autowired
-    private AliRTCClientAdapter aliRTCClientAdapter;
     
     /**
      * Creates the active WebRTC channel strategy bean based on configuration
@@ -71,10 +66,6 @@ public class WebRTCStrategyConfig {
             case "agora":
                 strategy = new AgoraChannelStrategy(agoraClientAdapter);
                 logger.info("✅ Agora WebRTC strategy activated");
-                break;
-            case "alirtc":
-                strategy = new AliRTCChannelStrategy(aliRTCClientAdapter);
-                logger.info("✅ AliRTC WebRTC strategy activated");
                 break;
             case "websocket":
             default:

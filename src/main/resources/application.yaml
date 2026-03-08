@@ -36,7 +36,7 @@ kurento:
 
 # WebRTC Configuration
 webrtc:
-  # Active strategy: websocket, kurento, livekit, agora, or alirtc
+  # Active strategy: websocket, kurento, livekit, or agora
   strategy: websocket
   kurento:
     ws-uri: ws://localhost:8888/kurento
@@ -48,15 +48,6 @@ webrtc:
   agora:
     app-id: ""
     app-certificate: ""
-    region: "cn"
-    sample-rate: 16000
-    channels: 1
-    token-expire-seconds: 3600
-  # AliRTC (阿里云 ARTC) Configuration
-  alirtc:
-    app-id: ""
-    app-key: ""
-    app-secret: ""
     region: "cn"
     sample-rate: 16000
     channels: 1
