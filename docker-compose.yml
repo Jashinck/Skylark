@@ -1,19 +1,47 @@
 version: '3.8'
 
+# ===========================================================================
+# 前置条件说明 (Prerequisites)
+# ===========================================================================
+# 1. 需要先构建 JAR：mvn clean package -DskipTests
+#    构建产物位于 target/skylark.jar
+# 2. 若要启用 Agora RTC 能力，需将 Agora Linux SDK 的所有 .so 文件
+#    放置于宿主机 ./native/agora/linux/x86_64/ 目录下
+#    （参考 native/README.md 获取详细说明）
+# 3. 若 ./native/agora/linux/x86_64/ 目录不存在或为空，
+#    服务仍可启动，Agora RTC join/send/recv 会降级为 no-op（Token 仍可用）
+# ===========================================================================
+
 services:
-  java-service:
-    build: ./java-service
+  skylark:
+    # 使用预构建的 JAR 文件直接运行（不打镜像）
+    # 若需构建自定义镜像，请先创建 Dockerfile 并将 build: . 取消注释
+    image: eclipse-temurin:17-jre
     container_name: skylark
+    working_dir: /app
     ports:
       - "8080:8080"
     environment:
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
       - SPRING_PROFILES_ACTIVE=prod
+      # Agora native .so 路径（容器内），与下方 volumes 挂载路径一致
+      - LD_LIBRARY_PATH=/app/native/agora
     volumes:
+      - ./target/skylark.jar:/app/skylark.jar:ro
+      - ./src/main/resources/config:/app/config:ro
       - ./tmp:/app/tmp
       - ./logs:/app/logs
+      # Agora Linux SDK native .so 挂载（可选）
+      # 宿主机路径 ./native/agora/linux/x86_64/ 须存在且包含 .so 文件
+      # 若不需要 Agora RTC，可删除或注释此行
+      - ./native/agora/linux/x86_64:/app/native/agora:ro
     restart: unless-stopped
-    command: ["java", "-jar", "skylark.jar", "config/config.yaml"]
+    command:
+      - "java"
+      - "-Djava.library.path=/app/native/agora"
+      - "-jar"
+      - "skylark.jar"
+      - "config/config.yaml"
 
 networks:
   default:
