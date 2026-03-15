@@ -572,7 +572,7 @@ public class DuplexSessionStateMachine {
 
 ```java
 /**
- * TripleVADEngine — 替代当前 VADService 的单一检测逻辑
+ * TripleVADEngine — 增强当前 VADService 的单一检测逻辑（保留 Silero 作为回退）
  *
  * 采用三级 VAD 策略（详见 3.1 节选型分析）：
  * 1. 快速 VAD (TEN-VAD): 306KB 极轻量，RTF=0.015，原生 Java JNI，16ms 帧级初判
