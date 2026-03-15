@@ -173,7 +173,12 @@ curl http://localhost:8080/tts/voices
 
 ### 短期目标 (Short-term Goals)
 
-1. **集成实际ML库**: 
+1. **PAAS RTC 深化与多厂商适配**: 
+   - ✅ 声网 Agora Linux SDK 已集成
+   - 腾讯云 TRTC 适配 (Q3 2026)
+   - 阿里云 RTC、网易云信 NERTC 适配 (Q4 2026)
+
+2. **集成实际ML库**: 
    - ASR: Vosk或Google Cloud Speech
    - TTS: MaryTTS或Azure Speech
    - VAD: WebRTC VAD或Silero VAD

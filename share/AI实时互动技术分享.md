@@ -36,7 +36,7 @@ AI实时互动技术是指利用人工智能技术，实现人与机器之间的
 🔧 **灵活配置** - 支持直接调用或HTTP服务模式  
 🌐 **云原生友好** - 适配容器化和微服务架构  
 📦 **企业级设计** - 采用DDD分层架构，清晰的职责分离  
-🔌 **可插拔 WebRTC** - 支持 WebSocket / Kurento / LiveKit 三种实时通信策略  
+🔌 **可插拔 WebRTC** - 支持 WebSocket / Kurento / LiveKit / 声网Agora 四种实时通信策略  
 
 ---
 
@@ -417,13 +417,15 @@ webrtc:
   ↓
 ✅ 已完成：LiveKit Server 集成 + 可插拔策略架构
   ↓
+✅ 已完成：声网 Agora Linux SDK 集成（PAAS RTC 里程碑）
+  ↓
 Q2 2026：Ten VAD 能力引入 + VAD→ASR→LLM→TTS 级联方案优化
   ↓
 Q2 2026：千问/豆包 ASR、TTS、LLM 国内厂商适配
   ↓
-Q3 2026：声网Agora SDK集成 + 多模态大模型能力探索
+Q3 2026：腾讯云TRTC适配 + 多模态大模型能力探索
   ↓
-Q3 2026：腾讯云TRTC适配 + 开源多模态模型（Qwen-Audio等）集成
+Q3 2026：开源多模态模型（Qwen-Audio等）集成
   ↓
 Q4 2026：阿里云RTC、网易云信适配 + 闭源多模态模型对接
   ↓

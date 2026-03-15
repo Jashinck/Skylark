@@ -57,9 +57,11 @@ java -jar target/skylark.jar my-config.yaml
 
 根据需要选择 WebRTC 策略：
 
+Choose the WebRTC strategy based on your needs:
+
 ```yaml
 webrtc:
-  strategy: livekit  # 可选: websocket, kurento, livekit
+  strategy: livekit  # 可选: websocket, kurento, livekit, agora
 
   # Kurento 配置
   kurento:
@@ -70,7 +72,33 @@ webrtc:
     url: ws://localhost:7880
     api-key: your-api-key
     api-secret: your-api-secret
+
+  # Agora 配置 (声网 PAAS RTC)
+  agora:
+    app-id: "your-agora-app-id"           # 声网 App ID
+    app-certificate: "your-app-certificate" # 声网 App Certificate
+    region: "cn"                           # 区域: cn, na, eu, as
+    sample-rate: 16000                     # 采样率: 16kHz
+    channels: 1                            # 声道: 单声道
+    token-expire-seconds: 3600             # Token 有效期 (秒)
 ```
+
+#### Agora Native 库部署 (Agora Native Library Deployment)
+
+使用 Agora 策略时需要放置 native .so 文件：
+
+When using the Agora strategy, native .so files need to be placed:
+
+```bash
+# 放置 Agora Linux SDK 的 .so 文件
+mkdir -p native/agora/linux/x86_64
+cp /path/to/agora-sdk/*.so native/agora/linux/x86_64/
+
+# 使用 start.sh 启动会自动检测并加载
+./start.sh local
+```
+
+> 💡 若 native .so 不可用，Agora 适配器将优雅降级：Token 生成仍正常工作，频道操作变为 no-op。详见 [native/README.md](../native/README.md)。
 
 ### 3. 启动服务 (Start Service)
 
