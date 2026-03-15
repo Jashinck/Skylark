@@ -36,5 +36,8 @@ models/
 *.zip
 .env
 
+# Agora native 库（不提交二进制 .so 文件）
+native/agora/
+
 # Mac
 .DS_Store

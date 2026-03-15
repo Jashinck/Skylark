@@ -435,6 +435,62 @@ skylark/
 
 ---
 
+## 🚀 部署与 Agora RTC Native 库加载
+
+### 推荐启动方式（Linux x86_64，直接 java -jar）
+
+```bash
+# 1. 构建 JAR
+mvn clean package -DskipTests
+
+# 2.（可选）放置 Agora Linux SDK 的 .so 文件
+#    将 SDK 提供的所有 .so 拷贝到以下路径：
+mkdir -p native/agora/linux/x86_64
+cp /path/to/agora-sdk/*.so native/agora/linux/x86_64/
+
+# 3. 启动服务
+./start.sh local
+```
+
+`./start.sh local` 会自动：
+- 检测 `native/agora/linux/x86_64/` 是否存在 `.so`
+- 若存在：`export LD_LIBRARY_PATH=native/agora/linux/x86_64` + 添加 JVM 参数 `-Djava.library.path`
+- 若不存在：打印提示并以降级模式启动（Agora RTC join/send/recv 为 no-op，Token 仍正常）
+
+也可通过环境变量覆盖默认路径：
+
+```bash
+AGORA_NATIVE_DIR=/custom/path/to/so \
+JAR_PATH=/custom/skylark.jar \
+CONFIG_PATH=/custom/config.yaml \
+./start.sh local
+```
+
+### Agora native .so 放置说明
+
+详见 [native/README.md](native/README.md)，包含：
+- 需要放置的文件清单
+- 文件权限设置
+- 依赖校验命令（`ldd`）
+- 常见 `UnsatisfiedLinkError` 排查手册
+
+### 排查 .so 加载问题
+
+```bash
+# 检查 .so 依赖是否齐全（有输出则说明缺库）
+ldd native/agora/linux/x86_64/*.so | grep "not found"
+
+# 打开动态链接器加载日志
+LD_DEBUG=libs ./start.sh local 2>&1 | grep agora
+
+# 确认系统架构
+uname -m  # 应输出 x86_64
+```
+
+若仍报 `UnsatisfiedLinkError`，查看 Java 日志中的提示，Agora 适配器会优雅降级而非崩溃。
+
+---
+
 ## 📜 开源协议 (License)
 
 本项目采用 [Apache License 2.0](LICENSE) 开源协议。
