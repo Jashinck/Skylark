@@ -236,8 +236,9 @@ public class DuplexOrchestrationService {
             @Override
             public void onSentenceComplete(String sentence) {
                 // Send sentence to TTS
-                if (sm.getState() == DuplexSessionState.PROCESSING ||
-                        sm.getState() == DuplexSessionState.SPEAKING) {
+                DuplexSessionState smState = sm.getState();
+                if (smState == DuplexSessionState.PROCESSING ||
+                        smState == DuplexSessionState.SPEAKING) {
 
                     if (!firstChunkSent) {
                         sm.onFirstTTSChunk();

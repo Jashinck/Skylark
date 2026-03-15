@@ -25,7 +25,7 @@ public class StreamingLLMService {
 
     private static final Logger logger = LoggerFactory.getLogger(StreamingLLMService.class);
 
-    /** Sentence boundary characters (Chinese + English) */
+    /** Sentence boundary characters (Chinese + English + newline) */
     private static final String SENTENCE_BOUNDARIES = "。！？.!?\n";
 
     private final AgentService agentService;

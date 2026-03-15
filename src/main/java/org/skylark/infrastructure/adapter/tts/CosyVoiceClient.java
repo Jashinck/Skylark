@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  *   StreamingTTSService              CosyVoice2-0.5B model
  *   (text sentences →)               + voice selection/cloning
  *   (← PCM audio chunks)            + prosody control
- *                                    First package latency: &lt;150ms
+ *                                    First package latency: less than 150ms
  * </pre></p>
  *
  * <p>Phase 2 component: gRPC/HTTP client for CosyVoice server.
