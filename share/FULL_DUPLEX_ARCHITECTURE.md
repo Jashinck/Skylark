@@ -1,8 +1,8 @@
 # Skylark 全双工语音交互架构设计方案
 # Skylark Full-Duplex Voice Interaction Architecture Design
 
-> **版本 / Version**: 1.0.0  
-> **日期 / Date**: 2026-03-14  
+> **版本 / Version**: 1.1.0  
+> **日期 / Date**: 2026-03-15  
 > **作者 / Author**: Skylark Team  
 > **状态 / Status**: 技术方案 / Technical Proposal  
 
@@ -115,7 +115,7 @@ TTS合成                                  ████████
 
 | 层级 | 关键技术 | 开源方案 |
 |------|----------|----------|
-| L1 打断 | 并行 VAD + TTS 中断 | Silero VAD（已有）+ 播放控制 |
+| L1 打断 | 并行 VAD + TTS 中断 | TEN-VAD（快速） + FireRedVAD（精确） + Silero（回退）+ 播放控制 |
 | L2 流式 | Streaming ASR/LLM/TTS | Whisper Streaming / FunASR, OpenAI Streaming API, ChatTTS / CosyVoice |
 | L3 全双工 | AEC + 双通道 + 状态机 | SpeexDSP AEC / WebRTC AEC3, Duplex State Machine |
 | L4 自然对话 | Audio-native LLM | Moshi / GLM-4-Voice / Qwen2-Audio / Mini-Omni |
@@ -130,18 +130,120 @@ TTS合成                                  ████████
 
 当前 `VADService` 已集成 Silero VAD，支持 ONNX 推理和能量检测回退。**保留并增强**。
 
-#### 增强方向
+#### 候选方案全面对比
 
-| 方案 | 说明 | 适用场景 |
-|------|------|----------|
-| **Silero VAD v5**（推荐升级） | 最新版本，支持 512/1024 采样窗口，准确率提升 | 实时流式 VAD |
-| **WebRTC VAD** | Google WebRTC 内置 VAD，C++ 实现，极低延迟 | 作为前置快速过滤 |
-| **双 VAD 策略** | WebRTC VAD（快速判定） + Silero VAD（精确确认） | 兼顾速度和精度 |
+| 方案 | 架构 | 模型大小 | 流式支持 | Java 集成 | 许可证 | 推荐度 |
+|------|------|----------|----------|-----------|--------|--------|
+| **FireRedVAD** | DFSMN (8 blocks) | ~2.3 MB (ONNX FP32) | ✅ 因果流式 | ⚠️ ONNX Runtime Java | Apache-2.0 | ⭐⭐⭐⭐⭐ |
+| **TEN-VAD** | 深度学习 (轻量) | ~306 KB | ✅ 帧级流式 | ✅ 原生 JNI 绑定 | Apache-2.0 | ⭐⭐⭐⭐⭐ |
+| **Silero VAD v5** | CNN + LSTM | ~2.2 MB (ONNX) | ✅ 512/1024 窗口 | ⚠️ ONNX Runtime Java | MIT | ⭐⭐⭐⭐ |
+| **WebRTC VAD** | GMM (传统信号) | ~100 KB | ✅ 极低延迟 | ⚠️ 需 JNI 封装 C++ | BSD | ⭐⭐⭐ |
+
+#### FLEURS-VAD-102 基准测试对比
+
+基于 FLEURS-VAD-102 多语言数据集（102 种语言）的标准化评测结果：
+
+| 模型 | AUC-ROC ↑ | F1 Score ↑ | 误报率 (FAR) ↓ | 漏检率 (MR) ↓ | RTF ↓ |
+|------|-----------|------------|----------------|---------------|-------|
+| **FireRedVAD** | **99.60** | **97.57** | **2.69** | 3.62 | ~0.02 |
+| **TEN-VAD** | 97.81 | 95.19 | 15.47 | **2.95** | **0.015** |
+| **Silero VAD** | 97.99 | 95.95 | 9.41 | 3.95 | ~0.05 |
+| **WebRTC VAD** | — | 52.30 | 2.83 | 64.15 | <0.001 |
+
+> **注**：RTF (Real-Time Factor) = 处理耗时 / 音频时长，越低越好。RTF < 0.1 即可满足实时需求。
+
+#### 各方案深度分析
+
+**FireRedVAD（火红 VAD）—— 精度之王**
+
+```
+来源: github.com/FireRedTeam/FireRedVAD
+架构: Deep Feedforward Sequential Memory Networks (DFSMN)，8 个 DFSMN block + 1 DNN 层
+输入: 80 维 log-Mel fbank 特征（16kHz, 25ms 窗, 10ms 移）
+```
+
+- ✅ **F1 最高 (97.57%)**：在 FLEURS-VAD-102 上全面领先，误报和漏检均低
+- ✅ **100+ 语言支持**：覆盖中文方言、英语等，多语言场景首选
+- ✅ **音频事件检测（AED）**：除语音外还能检测歌唱、音乐，全双工场景可用于区分有效语音
+- ✅ **ONNX 导出**：流式（因果）版本已提供 ONNX 模型，可用 ONNX Runtime Java 加载
+- ⚠️ **Java 集成**：无原生 Java SDK，需通过 ONNX Runtime Java API 调用（Skylark 已有 ONNX Runtime 依赖）
+- ⚠️ **模型体积**：2.3 MB，比 TEN-VAD 大但仍属轻量级
+
+**TEN-VAD —— 速度之王**
+
+```
+来源: github.com/TEN-framework/ten-vad（声网 TEN 框架开源）
+架构: 轻量深度学习模型，帧级推理
+输入: 16kHz PCM 音频，16ms 帧
+```
+
+- ✅ **极致轻量 (306 KB)**：模型体积最小，适合边缘部署和移动端
+- ✅ **RTF 最低 (0.015)**：处理速度比 Silero 快约 3 倍，比实时快 66 倍
+- ✅ **原生 Java/JNI 绑定**：提供 Linux/macOS/Windows/Android 多平台 Java 接口，与 Skylark Java 生态天然匹配
+- ✅ **Agent 友好**：专为对话式 AI 设计，内置 barge-in 和轮转检测支持
+- ⚠️ **精度稍低 (F1=95.19)**：比 FireRedVAD 低约 2.4 个百分点
+- ⚠️ **误报率较高 (15.47%)**：在嘈杂环境下可能产生更多假触发
+
+**Silero VAD v5 —— 生态成熟**
+
+```
+来源: github.com/snakers4/silero-vad
+架构: CNN + LSTM，流式推理
+输入: 16kHz PCM，512/1024 采样窗口
+```
+
+- ✅ **生态最成熟**：社区活跃，文档完善，Skylark 已有集成
+- ✅ **精度良好 (F1=95.95)**：平衡了误报和漏检
+- ⚠️ **速度中等**：RTF ~0.05，比 TEN-VAD 慢
+- ⚠️ **Java 集成**：需通过 ONNX Runtime Java，无原生 JNI
+
+#### 最佳 VAD 选型策略
+
+综合精度、速度、Java 集成度和全双工场景需求，推荐 **"三级 VAD" 策略**：
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    三级 VAD 选型策略 (Triple-VAD Strategy)                │
+│                                                                         │
+│  ┌─ 第一级：TEN-VAD (快速前置过滤) ──────────────────────────────┐      │
+│  │  • 306KB 极致轻量，RTF=0.015                                  │      │
+│  │  • 原生 Java JNI，与 Skylark 无缝集成                          │      │
+│  │  • 帧级(16ms)快速判定：speech / non-speech                     │      │
+│  │  • 作用：过滤明确的静音帧，减少后续计算量                        │      │
+│  └───────────────────────────────────────────────┬───────────────┘      │
+│                                                  │ speech detected       │
+│  ┌───────────────────────────────────────────────▼───────────────┐      │
+│  │ 第二级：FireRedVAD (精确确认) ─────────────────────────────── │      │
+│  │  • F1=97.57% SOTA 精度，误报率仅 2.69%                        │      │
+│  │  • ONNX Runtime Java 加载（复用 Skylark 已有 ONNX 依赖）       │      │
+│  │  • 作用：精确确认语音边界，降低误触发                            │      │
+│  │  • AED 能力可区分语音/歌唱/音乐，避免非语音干扰                  │      │
+│  └───────────────────────────────────────────────┬───────────────┘      │
+│                                                  │ confirmed speech      │
+│  ┌───────────────────────────────────────────────▼───────────────┐      │
+│  │ 第三级：Silero VAD (兼容回退) ──────────────────────────────── │      │
+│  │  • Skylark 已有完整集成，零改造成本                              │      │
+│  │  • 当 TEN-VAD/FireRedVAD 不可用时自动降级                       │      │
+│  │  • 作用：保障系统可用性，向后兼容                                │      │
+│  └──────────────────────────────────────────────────────────────┘      │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**选型策略总结**：
+
+| 场景 | 推荐配置 | 理由 |
+|------|----------|------|
+| **全双工生产环境** | TEN-VAD (快速) + FireRedVAD (精确) | 速度与精度最佳组合，TEN-VAD 16ms 帧级判定保障低延迟打断，FireRedVAD 2.69% 误报率避免假打断 |
+| **低资源/边缘部署** | TEN-VAD 单引擎 | 306KB 模型，RTF=0.015，原生 Java 支持 |
+| **快速接入/过渡期** | Silero VAD（现有） | 零改造成本，已集成在 `VADService` 中 |
+| **多语言场景** | FireRedVAD 单引擎 | 100+ 语言支持，AUC-ROC=99.60 |
 
 **全双工 VAD 增强要点**：
 - 从当前"帧级检测 + 静音计数"升级为"**持续并行检测**"
 - TTS 播放期间不停止 VAD，始终监听用户音频
 - 引入 AEC 后的残留信号检测，区分用户语音与系统回声
+- TEN-VAD 的 16ms 帧级检测确保打断响应延迟 < 50ms
+- FireRedVAD 的 AED 能力可辅助区分用户语音与背景音乐/系统回声
 
 ### 3.2 流式 ASR（语音识别）
 
@@ -235,7 +337,7 @@ Moshi 选型理由：
 │                         Client (Web/Mobile/Device)                       │
 │  ┌─────────────┐  ┌──────────────┐  ┌──────────────┐                   │
 │  │ Mic Capture  │  │ AEC (SDK内置) │  │  Speaker     │                   │
-│  │ + WebRTC VAD │  │ + ANS + AGC  │  │  Playback    │                   │
+│  │ + Client VAD │  │ + ANS + AGC  │  │  Playback    │                   │
 │  └──────┬───────┘  └──────┬───────┘  └──────▲───────┘                   │
 │         │                 │                 │                             │
 │         └─────────┬───────┘                 │                             │
@@ -254,7 +356,7 @@ Moshi 选型理由：
 │   │     Audio Input Pipeline           │     │                           │
 │   │  ┌─────────┐  ┌────────────────┐  │     │                           │
 │   │  │Server AEC│→│ Dual VAD Engine │  │     │                           │
-│   │  │(SpeexDSP)│  │(WebRTC+Silero) │  │     │                           │
+│   │  │(SpeexDSP)│  │(TEN+FireRed)   │  │     │                           │
 │   │  └─────────┘  └───────┬────────┘  │     │                           │
 │   └───────────────────────┼───────────┘     │                           │
 │                           │                 │                           │
@@ -466,22 +568,25 @@ public class DuplexSessionStateMachine {
 
 ### 6.1 增强型 VAD 模块
 
-#### 6.1.1 双 VAD 引擎设计
+#### 6.1.1 三级 VAD 引擎设计
 
 ```java
 /**
- * DualVADEngine — 替代当前 VADService 的单一检测逻辑
+ * TripleVADEngine — 替代当前 VADService 的单一检测逻辑
  *
- * 采用两级 VAD 策略：
- * 1. 快速 VAD (WebRTC VAD): 极低延迟(< 1ms)，用于初步判定
- * 2. 精确 VAD (Silero VAD): 基于深度学习，用于确认判定
+ * 采用三级 VAD 策略（详见 3.1 节选型分析）：
+ * 1. 快速 VAD (TEN-VAD): 306KB 极轻量，RTF=0.015，原生 Java JNI，16ms 帧级初判
+ * 2. 精确 VAD (FireRedVAD): F1=97.57% SOTA 精度，ONNX Runtime 推理，精确确认
+ * 3. 回退 VAD (Silero VAD): 现有 VADService ONNX 部分，兼容降级
  *
- * 组合策略避免了误触发（用户咳嗽、背景噪音）和漏检
+ * 组合策略：TEN-VAD 高速过滤静音帧 → FireRedVAD 精确确认语音边界 → Silero 兜底
+ * 全双工关键：即使在 SPEAKING 状态（TTS 播放中），VAD 也持续运行
  */
-public class DualVADEngine {
+public class TripleVADEngine {
 
-    private final WebRTCVAD quickVAD;       // 快速前置过滤
-    private final SileroVAD preciseVAD;     // 精确确认（现有 VADService ONNX 部分）
+    private final TenVAD quickVAD;          // 第一级：TEN-VAD 快速前置过滤（Java JNI）
+    private final FireRedVAD preciseVAD;    // 第二级：FireRedVAD 精确确认（ONNX Runtime）
+    private final SileroVAD fallbackVAD;    // 第三级：Silero VAD 兼容回退（现有 VADService）
 
     /**
      * 全双工 VAD 检测 —— 关键增强：
@@ -490,20 +595,45 @@ public class DualVADEngine {
      * 3. 返回带置信度的结果
      */
     public VADResult detect(float[] aecProcessedAudio) {
-        // 第一级：WebRTC VAD 快速判定
+        // 第一级：TEN-VAD 快速判定（16ms 帧级，RTF=0.015）
+        // 高速过滤明确的静音帧，减少后续计算量
         boolean quickResult = quickVAD.isSpeech(aecProcessedAudio);
         if (!quickResult) {
             return VADResult.silence();
         }
 
-        // 第二级：Silero VAD 精确确认
+        // 第二级：FireRedVAD 精确确认（F1=97.57%，误报率仅 2.69%）
+        // 避免 TEN-VAD 15.47% 误报率导致的假打断
         float probability = preciseVAD.getSpeechProbability(aecProcessedAudio);
+
+        // FireRedVAD AED 能力：区分语音 vs 歌唱/音乐/回声残留
+        AudioEventType eventType = preciseVAD.getEventType(aecProcessedAudio);
+        if (eventType != AudioEventType.SPEECH) {
+            return VADResult.nonSpeechEvent(eventType);
+        }
 
         return new VADResult(
             probability > THRESHOLD,
             probability,
             System.currentTimeMillis()
         );
+    }
+
+    /**
+     * 降级检测 —— 当 TEN-VAD 或 FireRedVAD 不可用时
+     */
+    public VADResult detectWithFallback(float[] aecProcessedAudio) {
+        try {
+            return detect(aecProcessedAudio);
+        } catch (Exception e) {
+            // 回退到 Silero VAD（现有 VADService 逻辑）
+            float probability = fallbackVAD.getSpeechProbability(aecProcessedAudio);
+            return new VADResult(
+                probability > THRESHOLD,
+                probability,
+                System.currentTimeMillis()
+            );
+        }
     }
 }
 ```
@@ -512,9 +642,10 @@ public class DualVADEngine {
 
 | 现有代码 | 全双工升级 |
 |----------|-----------|
-| `VADService.detect()` | 重构为 `DualVADEngine.detect()`，接收 AEC 后音频 |
-| `VADService.performOnnxDetection()` | 保留为 `SileroVAD.getSpeechProbability()` |
-| `VADService.performEnergyDetection()` | 替换为 `WebRTCVAD.isSpeech()` |
+| `VADService.detect()` | 重构为 `TripleVADEngine.detect()`，接收 AEC 后音频 |
+| `VADService.performOnnxDetection()` | 保留为 `SileroVAD.getSpeechProbability()`（第三级回退） |
+| `VADService.performEnergyDetection()` | 替换为 `TenVAD.isSpeech()`（第一级快速判定） |
+| — (新增) | `FireRedVAD.getSpeechProbability()` + `getEventType()`（第二级精确确认） |
 | `VADService.VADState` | 迁移到 `DuplexSessionStateMachine.State` |
 | `VADService.sessionStates` | 由 `DuplexSessionManager` 统一管理 |
 
@@ -764,7 +895,7 @@ RTC 下行音频 ──┘   (参考信号)
 @Service
 public class DuplexOrchestrationService {
 
-    private final DualVADEngine vadEngine;
+    private final TripleVADEngine vadEngine;
     private final StreamingASRService streamingASR;
     private final StreamingLLMService streamingLLM;
     private final StreamingTTSService streamingTTS;
@@ -968,7 +1099,7 @@ public class ModelRouter {
 | 现有组件 | 文件路径 | 全双工升级 | 变化说明 |
 |----------|----------|-----------|----------|
 | `OrchestrationService` | `application/service/` | `DuplexOrchestrationService` | 重构为全双工编排，引入状态机 |
-| `VADService` | `application/service/` | `DualVADEngine` | 增强为双 VAD 引擎 |
+| `VADService` | `application/service/` | `TripleVADEngine` | 增强为三级 VAD 引擎（TEN-VAD + FireRedVAD + Silero 回退） |
 | `ASRService` | `application/service/` | `StreamingASRService` | 从批量改为 WebSocket 流式 |
 | `TTSService` | `application/service/` | `StreamingTTSService` | 从整段生成改为流式分片 |
 | `AgentService` | `application/service/` | `StreamingLLMService` | 增加流式 token 输出 |
@@ -984,7 +1115,7 @@ public class ModelRouter {
 |----------|--------|------|
 | `DuplexSessionStateMachine` | `application/service/duplex/` | 全双工会话状态管理 |
 | `DuplexOrchestrationService` | `application/service/duplex/` | 全双工编排服务 |
-| `DualVADEngine` | `application/service/duplex/` | 双 VAD 引擎 |
+| `TripleVADEngine` | `application/service/duplex/` | 三级 VAD 引擎（TEN-VAD + FireRedVAD + Silero） |
 | `StreamingASRService` | `application/service/duplex/` | 流式 ASR 服务 |
 | `StreamingTTSService` | `application/service/duplex/` | 流式 TTS 服务 |
 | `StreamingLLMService` | `application/service/duplex/` | 流式 LLM 服务 |
@@ -1046,7 +1177,7 @@ Phase 1 目标:
 
 | 改造项 | 说明 | 影响文件 |
 |--------|------|----------|
-| TTS 播放时持续 VAD | 系统说话期间不停止 VAD 检测 | `OrchestrationService` |
+| TTS 播放时持续 VAD | 系统说话期间不停止 VAD 检测（TEN-VAD 快速 + FireRedVAD 确认） | `OrchestrationService` |
 | TTS 中断机制 | 收到 barge-in 时立即停止音频发送 | `TTSService`, `ResponseCallback` |
 | 会话状态枚举 | 引入 IDLE/LISTENING/SPEAKING 状态 | 新增 `SessionState` |
 | LLM 取消机制 | barge-in 时取消进行中的 LLM 请求 | `AgentService` |
@@ -1116,7 +1247,7 @@ Phase 2(流式):
 Phase 1 (2-3周)     Phase 2 (4-6周)          Phase 3 (6-8周)
 可打断能力           流式级联管线               全双工+多模态
 ────────────        ───────────────           ─────────────────
-• 并行VAD监测        • FunASR流式ASR集成        • AEC回声消除
+• TEN+FireRed VAD   • FunASR流式ASR集成        • AEC回声消除
 • TTS中断机制        • LLM流式输出              • 双通道音频管理
 • 基础状态枚举        • CosyVoice流式TTS         • 全双工状态机
 • LLM取消           • 分句策略                 • Moshi/GLM-4集成
@@ -1204,7 +1335,7 @@ LLM 输出句2时，TTS 已完成句1合成并开始播放，同时合成句2。
 
 | 风险 | 影响 | 缓解措施 |
 |------|------|----------|
-| AEC 效果不佳导致 VAD 误触发 | 频繁假打断 | 双 VAD 确认 + 能量阈值调整 |
+| AEC 效果不佳导致 VAD 误触发 | 频繁假打断 | 三级 VAD 确认（TEN-VAD 快速 + FireRedVAD 精确，误报率仅 2.69%） |
 | 流式 ASR 中间结果不稳定 | 发送错误文本到 LLM | 延迟确认策略（等待 200ms 稳定窗口） |
 | LLM 流式输出断续 | TTS 播放卡顿 | 自适应缓冲 + 句级缓存 |
 | Moshi 模型 GPU 显存需求大 | 部署成本高 | 使用量化版本 (INT8/INT4) |
@@ -1253,13 +1384,15 @@ public class DuplexConfig {
 | **Moshi** | github.com/kyutai-labs/moshi | 全双工语音 LLM |
 | **FunASR** | github.com/modelscope/FunASR | 流式 ASR |
 | **CosyVoice** | github.com/FunAudioLLM/CosyVoice | 流式 TTS |
-| **Silero VAD** | github.com/snakers4/silero-vad | VAD 模型 |
+| **FireRedVAD** | github.com/FireRedTeam/FireRedVAD | SOTA VAD，F1=97.57%，100+语言 |
+| **TEN-VAD** | github.com/TEN-framework/ten-vad | 极轻量 VAD，306KB，原生 Java JNI |
+| **Silero VAD** | github.com/snakers4/silero-vad | VAD 模型（现有集成） |
 | **GLM-4-Voice** | github.com/THUDM/GLM-4-Voice | 端到端语音 LLM |
 | **Qwen2-Audio** | github.com/QwenLM/Qwen2-Audio | 多模态音频理解 |
 | **ChatTTS** | github.com/2noise/ChatTTS | 流式 TTS |
 | **Mini-Omni** | github.com/gpt-omni/mini-omni | 轻量端到端模型 |
 | **SpeexDSP** | github.com/xiph/speexdsp | 回声消除 |
-| **WebRTC VAD** | webrtc.googlesource.com/src | 快速 VAD |
+| **WebRTC VAD** | webrtc.googlesource.com/src | 传统 GMM VAD（参考对比） |
 | **Open Voice Agent (LiveKit)** | github.com/livekit/agents | 语音 Agent 框架 |
 | **Pipecat (Daily.co)** | github.com/pipecat-ai/pipecat | 语音 AI 管线 |
 
