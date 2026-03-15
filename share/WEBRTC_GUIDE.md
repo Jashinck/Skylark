@@ -2,15 +2,16 @@
 
 ## 概述 (Overview)
 
-云雀 (Skylark) 现已集成多种 WebRTC 实时语音通信方案，支持完整的 VAD→ASR→LLM→TTS 编排流程。通过可插拔的 **WebRTCChannelStrategy** 策略模式，支持以下三种 WebRTC 方案：
+云雀 (Skylark) 现已集成多种 WebRTC 实时语音通信方案，支持完整的 VAD→ASR→LLM→TTS 编排流程。通过可插拔的 **WebRTCChannelStrategy** 策略模式，支持以下四种 WebRTC 方案：
 
 | 策略 | 配置值 | 说明 |
 |------|--------|------|
 | WebSocket | `websocket` | 基于 WebSocket 的基础音频传输方案 |
 | Kurento | `kurento` | 基于 Kurento Media Server 的专业媒体服务器方案 |
 | LiveKit | `livekit` | 基于 LiveKit Server 的云原生实时通信方案 |
+| Agora | `agora` | 基于声网 Agora Linux SDK 的 PAAS 商用级 RTC 方案 |
 
-Skylark now integrates multiple WebRTC real-time voice communication solutions, supporting the complete VAD→ASR→LLM→TTS orchestration pipeline. Through the pluggable **WebRTCChannelStrategy** pattern, three WebRTC strategies are supported: WebSocket, Kurento, and LiveKit.
+Skylark now integrates multiple WebRTC real-time voice communication solutions, supporting the complete VAD→ASR→LLM→TTS orchestration pipeline. Through the pluggable **WebRTCChannelStrategy** pattern, four WebRTC strategies are supported: WebSocket, Kurento, LiveKit, and Agora.
 
 ## 架构 (Architecture)
 
@@ -404,13 +405,66 @@ docker run -d --name livekit \
 
 详细文档请参考：[LiveKit 官方文档](https://docs.livekit.io/) | [WebRTC 双框架技术博客](./WEBRTC_FRAMEWORKS_BLOG.md)
 
-## 策略切换 (Strategy Switching)
+## 声网 Agora 集成 (Agora Integration)
 
-通过修改 `webrtc.strategy` 配置值，可在 WebSocket、Kurento、LiveKit 三种方案间自由切换：
+### 概述
+
+声网 Agora 是全球领先的 PAAS RTC 服务商，云雀通过 `AgoraChannelStrategy` 实现了 Agora Linux Server SDK 的集成，提供商用级实时音视频传输能力。
+
+Agora is a leading global PAAS RTC provider. Skylark integrates Agora Linux Server SDK through `AgoraChannelStrategy`, providing enterprise-grade real-time audio/video communication.
+
+### 配置
 
 ```yaml
 webrtc:
-  strategy: livekit  # 可选: websocket, kurento, livekit
+  strategy: agora
+  agora:
+    app-id: "your-agora-app-id"
+    app-certificate: "your-agora-app-certificate"
+    region: "cn"              # 区域: cn, na, eu, as
+    sample-rate: 16000
+    channels: 1
+    token-expire-seconds: 3600
+```
+
+### Native 库部署
+
+Agora SDK 需要 native .so 文件：
+
+```bash
+# 放置 .so 文件
+mkdir -p native/agora/linux/x86_64
+cp /path/to/agora-sdk/*.so native/agora/linux/x86_64/
+
+# 使用 start.sh 自动检测并加载
+./start.sh local
+```
+
+> 若 native .so 不可用，适配器将优雅降级：Token 生成正常，频道操作变为 no-op。
+
+### API 端点
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/api/webrtc/agora/session` | 创建 Agora 会话（返回 appId + channelName + Token + uid） |
+| `DELETE` | `/api/webrtc/agora/session/{id}` | 关闭会话 |
+
+### 核心特性
+
+- **服务端音频处理闭环**：AI Agent 直接加入 Agora 频道，实时接收/发送音频
+- **纯 Java Token 生成**：HMAC-SHA256 实现，无需额外 SDK
+- **全球加速**：声网 SD-RTN™ 全球 250+ 数据中心
+- **优雅降级**：无 native 库时自动降级，不影响开发调试
+
+详细技术方案请参考：[Agora RTC 技术分享](./AGORA_RTC_TECH_SHARING.md) | [PAAS RTC 集成规范](./PAAS_RTC_INTEGRATION_SPEC.md)
+
+## 策略切换 (Strategy Switching)
+
+通过修改 `webrtc.strategy` 配置值，可在 WebSocket、Kurento、LiveKit、Agora 四种方案间自由切换：
+
+```yaml
+webrtc:
+  strategy: livekit  # 可选: websocket, kurento, livekit, agora
 ```
 
 ## 贡献 (Contributing)

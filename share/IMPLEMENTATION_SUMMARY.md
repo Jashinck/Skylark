@@ -231,12 +231,15 @@ export DEEPSEEK_API_KEY=your-api-key-here
 ## 未来改进 (Future Improvements)
 
 ### 短期 (Short-term)
+- [x] 集成声网 Agora Linux Server SDK (PAAS RTC)
 - [ ] 集成完整的 TTS 服务 (MaryTTS 或云服务)
 - [ ] 优化 LLM 响应速度
 - [ ] 添加音频预处理 (降噪、增益控制)
 - [ ] 支持多语言识别
 
 ### 中期 (Mid-term)
+- [ ] 适配腾讯云 TRTC (Q3 2026)
+- [ ] 适配阿里云 RTC、网易云信 NERTC (Q4 2026)
 - [ ] 实现真正的 WebRTC peer-to-peer 连接
 - [ ] 添加音频编解码器支持 (Opus, AAC)
 - [ ] 支持多用户并发
@@ -290,6 +293,7 @@ Apache License 2.0
 ✅ **Web 客户端界面**  
 ✅ **全面的测试覆盖**  
 ✅ **详细的文档**  
+✅ **声网 Agora PAAS RTC 集成** — 服务端音频处理闭环，AI Agent 加入频道实时交互  
 
 该实施为项目提供了强大的实时语音交互能力，为后续功能扩展奠定了坚实基础。
 

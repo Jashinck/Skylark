@@ -11,6 +11,7 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Kurento](https://img.shields.io/badge/Kurento-6.18.0-blueviolet.svg)](https://kurento.openvidu.io/)
 [![LiveKit](https://img.shields.io/badge/LiveKit-0.12.0-ff69b4.svg)](https://livekit.io/)
+[![Agora](https://img.shields.io/badge/Agora_RTC-4.4.31.4-00C853.svg)](https://www.agora.io/)
 [![AgentScope](https://img.shields.io/badge/AgentScope-1.0.9-cyan.svg)](https://github.com/modelscope/agentscope)
 
 ---
@@ -33,6 +34,7 @@
 🎙️ **WebRTC集成** - 实时语音通信，VAD→ASR→AgentScope→TTS完整编排  
 📞 **Kurento 媒体服务** - 基于 Kurento Media Server 的专业 WebRTC 解决方案，提供服务端媒体处理、管道编排、会话管理与智能语音交互  
 ☁️ **LiveKit 云原生** - 基于 LiveKit 的轻量级云原生 WebRTC 方案，Token 鉴权即用，Room 模型天然支持多人场景  
+📡 **声网 Agora PAAS RTC** - 集成声网 Agora Linux Server SDK，提供全球级实时音视频传输、AI 降噪、弱网优化，一行配置即可启用商用级 PAAS RTC 能力  
 
 ---
 
