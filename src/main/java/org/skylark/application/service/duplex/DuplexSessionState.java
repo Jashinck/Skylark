@@ -16,6 +16,8 @@ public enum DuplexSessionState {
     PROCESSING,
     /** Speaking state - TTS audio playback, still monitoring VAD / TTS播放中，仍在监听VAD */
     SPEAKING,
+    /** L3 Full-duplex parallel state - uplink ASR and downlink TTS running simultaneously / L3全双工并行态：上行ASR与下行TTS同时工作 */
+    SPEAKING_AND_LISTENING,
     /** Interrupting state - user barge-in, cleaning up and switching / 用户打断，正在清理切换 */
     INTERRUPTING
 }

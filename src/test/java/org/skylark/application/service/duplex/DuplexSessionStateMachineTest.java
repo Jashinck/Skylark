@@ -368,4 +368,133 @@ class DuplexSessionStateMachineTest {
         assertDoesNotThrow(() -> stateMachine.onVADEvent(VADEvent.SPEECH_START));
         assertEquals(DuplexSessionState.LISTENING, stateMachine.getState());
     }
+
+    // --- L3 Full-duplex tests ---
+
+    @Test
+    void testDefaultConstructor_FullDuplexDisabled() {
+        // Default constructor keeps existing L1 behavior
+        DuplexSessionStateMachine sm = new DuplexSessionStateMachine("session-default");
+        // SPEAKING + SPEECH_START should go to INTERRUPTING then LISTENING (L1 barge-in)
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        sm.onVADEvent(VADEvent.SPEECH_END);
+        sm.onFirstTTSChunk();
+        assertEquals(DuplexSessionState.SPEAKING, sm.getState());
+
+        DuplexSessionState result = sm.onVADEvent(VADEvent.SPEECH_START);
+        assertEquals(DuplexSessionState.LISTENING, result);
+    }
+
+    @Test
+    void testSpeaking_SpeechStart_FullDuplexEnabled_TransitionsToSpeakingAndListening() {
+        // Arrange
+        DuplexSessionStateMachine sm = new DuplexSessionStateMachine("fd-session", true);
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        sm.onVADEvent(VADEvent.SPEECH_END);
+        sm.onFirstTTSChunk();
+        assertEquals(DuplexSessionState.SPEAKING, sm.getState());
+
+        // Act
+        DuplexSessionState result = sm.onVADEvent(VADEvent.SPEECH_START);
+
+        // Assert — L3: enters parallel state instead of interrupting
+        assertEquals(DuplexSessionState.SPEAKING_AND_LISTENING, result);
+    }
+
+    @Test
+    void testSpeaking_SpeechStart_FullDuplexDisabled_TransitionsToInterruptingThenListening() {
+        // Arrange — explicit fullDuplexEnabled=false to confirm backward compat
+        DuplexSessionStateMachine sm = new DuplexSessionStateMachine("l1-session", false);
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        sm.onVADEvent(VADEvent.SPEECH_END);
+        sm.onFirstTTSChunk();
+        assertEquals(DuplexSessionState.SPEAKING, sm.getState());
+
+        // Act
+        DuplexSessionState result = sm.onVADEvent(VADEvent.SPEECH_START);
+
+        // Assert — L1: goes through INTERRUPTING to LISTENING
+        assertEquals(DuplexSessionState.LISTENING, result);
+    }
+
+    @Test
+    void testSpeakingAndListening_SpeechEnd_TransitionsToSpeaking() {
+        // Arrange
+        DuplexSessionStateMachine sm = new DuplexSessionStateMachine("fd-session", true);
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        sm.onVADEvent(VADEvent.SPEECH_END);
+        sm.onFirstTTSChunk();
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        assertEquals(DuplexSessionState.SPEAKING_AND_LISTENING, sm.getState());
+
+        // Act
+        DuplexSessionState result = sm.onVADEvent(VADEvent.SPEECH_END);
+
+        // Assert — back to SPEAKING (TTS still playing)
+        assertEquals(DuplexSessionState.SPEAKING, result);
+    }
+
+    @Test
+    void testSpeakingAndListening_SilenceTimeout_TransitionsToSpeaking() {
+        // Arrange
+        DuplexSessionStateMachine sm = new DuplexSessionStateMachine("fd-session", true);
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        sm.onVADEvent(VADEvent.SPEECH_END);
+        sm.onFirstTTSChunk();
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        assertEquals(DuplexSessionState.SPEAKING_AND_LISTENING, sm.getState());
+
+        // Act
+        DuplexSessionState result = sm.onVADEvent(VADEvent.SILENCE_TIMEOUT);
+
+        // Assert
+        assertEquals(DuplexSessionState.SPEAKING, result);
+    }
+
+    @Test
+    void testSpeakingAndListening_TTSComplete_TransitionsToListeningIfStillSpeaking() {
+        // Arrange — in SPEAKING_AND_LISTENING state (user is mid-utterance)
+        DuplexSessionStateMachine sm = new DuplexSessionStateMachine("fd-session", true);
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        sm.onVADEvent(VADEvent.SPEECH_END);
+        sm.onFirstTTSChunk();
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        assertEquals(DuplexSessionState.SPEAKING_AND_LISTENING, sm.getState());
+
+        // Act — TTS finishes while user is still speaking
+        sm.onTTSComplete();
+
+        // Assert — switches to pure LISTENING
+        assertEquals(DuplexSessionState.LISTENING, sm.getState());
+    }
+
+    @Test
+    void testSpeaking_TTSComplete_TransitionsToIdle() {
+        // Arrange — in SPEAKING state (user stopped speaking, TTS still going)
+        DuplexSessionStateMachine sm = new DuplexSessionStateMachine("fd-session", true);
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        sm.onVADEvent(VADEvent.SPEECH_END);
+        sm.onFirstTTSChunk();
+        assertEquals(DuplexSessionState.SPEAKING, sm.getState());
+
+        // Act — TTS finishes, user is silent
+        sm.onTTSComplete();
+
+        // Assert — transitions to IDLE
+        assertEquals(DuplexSessionState.IDLE, sm.getState());
+    }
+
+    @Test
+    void testSpeakingAndListening_IsBargeInPossible_ReturnsTrue() {
+        // Arrange
+        DuplexSessionStateMachine sm = new DuplexSessionStateMachine("fd-session", true);
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        sm.onVADEvent(VADEvent.SPEECH_END);
+        sm.onFirstTTSChunk();
+        sm.onVADEvent(VADEvent.SPEECH_START);
+        assertEquals(DuplexSessionState.SPEAKING_AND_LISTENING, sm.getState());
+
+        // Assert
+        assertTrue(sm.isBargeInPossible());
+    }
 }

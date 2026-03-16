@@ -51,6 +51,11 @@ public class DuplexConfig {
         return new ModelRouter();
     }
 
+    @Bean
+    public BackchannelFilter backchannelFilter() {
+        return new BackchannelFilter();
+    }
+
     /**
      * Duplex mode enum with feature flags
      * 全双工模式枚举及特性标志
