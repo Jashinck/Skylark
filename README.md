@@ -13,12 +13,13 @@
 [![LiveKit](https://img.shields.io/badge/LiveKit-0.12.0-ff69b4.svg)](https://livekit.io/)
 [![Agora](https://img.shields.io/badge/Agora_RTC-4.4.31.4-00C853.svg)](https://www.agora.io/)
 [![AgentScope](https://img.shields.io/badge/AgentScope-1.0.9-cyan.svg)](https://github.com/modelscope/agentscope)
+[![Duplex](https://img.shields.io/badge/Duplex-Full--Duplex-ff6600.svg)](#-全双工语音交互-full-duplex-voice-interaction)
 
 ---
 
-**云雀** 是一个基于 VAD、ASR、LLM、TTS、RTC 技术的智能语音交互代理系统，深度集成 **AgentScope** AI Agent 框架，实现自主推理与工具调用。
+**云雀** 是一个基于 VAD、ASR、LLM、TTS、RTC 技术的智能语音交互代理系统，深度集成 **AgentScope** AI Agent 框架，实现自主推理与工具调用，支持**全双工语音交互**。
 
-**Skylark** is an intelligent Voice Agent system based on VAD, ASR, LLM, TTS, and RTC technologies, deeply integrating the **AgentScope** AI Agent framework for autonomous reasoning and tool invocation.
+**Skylark** is an intelligent Voice Agent system based on VAD, ASR, LLM, TTS, and RTC technologies, deeply integrating the **AgentScope** AI Agent framework for autonomous reasoning and tool invocation, with **full-duplex voice interaction** support.
 
 </div>
 
@@ -35,6 +36,7 @@
 📞 **Kurento 媒体服务** - 基于 Kurento Media Server 的专业 WebRTC 解决方案，提供服务端媒体处理、管道编排、会话管理与智能语音交互  
 ☁️ **LiveKit 云原生** - 基于 LiveKit 的轻量级云原生 WebRTC 方案，Token 鉴权即用，Room 模型天然支持多人场景  
 📡 **声网 Agora PAAS RTC** - 集成声网 Agora Linux Server SDK，提供全球级实时音视频传输、AI 降噪、弱网优化，一行配置即可启用商用级 PAAS RTC 能力  
+🎙️ **全双工语音交互** - 支持可打断（Barge-in）、流式处理、全双工状态机，用户可在 AI 说话时随时打断，体验接近真人对话  
 
 ---
 
@@ -136,10 +138,12 @@ docker-compose up -d
 ✅ **Agent (AI 智能体)** - 已集成 AgentScope 框架，支持 ReAct 推理、工具调用、记忆管理  
 ✅ **Kurento WebRTC** - 已集成 Kurento Media Server 实现 1v1 实时语音通话  
 ✅ **LiveKit WebRTC** - 已集成 LiveKit 实现云原生 WebRTC 实时通话  
+✅ **Agora PAAS RTC** - 已集成声网 Agora Linux SDK，全球级 PAAS RTC 能力  
+✅ **全双工交互** - 已实现全双工状态机、Barge-in 可打断、流式分句合成、三级 VAD 引擎  
 
 所有服务均使用纯 Java 实现，无需 Python 依赖。
 
-详见: [开发指南](./share/JAVA_SERVICES_README.md) | [AgentScope 技术博客](./share/AGENTSCOPE_INTEGRATION_BLOG.md)
+详见: [开发指南](./share/JAVA_SERVICES_README.md) | [AgentScope 技术博客](./share/AGENTSCOPE_INTEGRATION_BLOG.md) | [全双工技术博客](./share/FULL_DUPLEX_TECH_SHARING.md)
 
 ## 🤖 AgentScope AI Agent 能力 (AgentScope AI Agent Capabilities)
 
@@ -375,6 +379,49 @@ http://localhost:8080/livekit-demo.html
 
 详细文档: [WebRTC 双框架技术博客](./share/WEBRTC_FRAMEWORKS_BLOG.md)
 
+## 🎙️ 全双工语音交互 (Full-Duplex Voice Interaction)
+
+云雀现已支持**全双工语音交互**能力，从传统的"对讲机"式半双工模式升级为支持可打断、流式处理的全双工架构。
+
+Skylark now supports **full-duplex voice interaction**, upgrading from traditional "walkie-talkie" half-duplex mode to an interruptible, streaming full-duplex architecture.
+
+### 核心特性
+
+🔊 **Barge-in 可打断** - 用户可在 AI 说话时随时打断，系统立即停止 TTS 并切换到监听模式  
+⚡ **流式分句合成** - LLM 回复按句子边界拆分，首句即合成播放，响应延迟从秒级降至毫秒级  
+🧠 **全双工状态机** - 5 状态有限状态机（IDLE/LISTENING/PROCESSING/SPEAKING/INTERRUPTING），VAD 在任何状态下持续监听  
+🔇 **AEC 回声消除** - 服务端 AEC 管道预置，当前依赖 PAAS RTC 客户端 AEC，后续集成 SpeexDSP  
+🎯 **三级 VAD 引擎** - Silero VAD（当前）/ TEN-VAD（快速）/ FireRedVAD（精准），多级降级策略  
+🛤️ **智能模型路由** - 根据对话内容自动选择级联模式（AgentScope）或端到端模式（Moshi/GLM-4-Voice）  
+🔄 **向后兼容** - 默认半双工模式，一行配置即可开启全双工，零风险升级
+
+### 全双工管道架构
+
+```
+用户语音 → AEC(回声消除) → VAD(始终监听) → ASR(流式) → LLM(流式+可取消)
+                                                              ↓
+                                                        分句策略(句子边界)
+                                                              ↓
+     用户打断 ← Barge-in 通知 ← 状态机(SPEAKING→INTERRUPTING) ← TTS(流式+可取消)
+```
+
+### 快速开启
+
+```yaml
+# application.yaml
+duplex:
+  mode: barge-in    # half(默认) | barge-in | streaming | full
+```
+
+| 模式 | 可打断 | 流式 | 全双工 | 适用场景 |
+|------|-------|------|-------|---------|
+| `half` | ❌ | ❌ | ❌ | 生产兜底，现有行为 |
+| `barge-in` | ✅ | ❌ | ❌ | 客服场景，用户需打断 |
+| `streaming` | ✅ | ✅ | ❌ | 低延迟场景 |
+| `full` | ✅ | ✅ | ✅ | 最佳体验，需 AEC 支持 |
+
+详细文档: [全双工架构设计](./share/FULL_DUPLEX_ARCHITECTURE.md) | [全双工技术博客](./share/FULL_DUPLEX_TECH_SHARING.md)
+
 ## 📁 项目结构 (Project Structure)
 
 ### 企业级DDD分层架构 (Enterprise DDD Layered Architecture)
@@ -395,7 +442,17 @@ skylark/
 │   │   │       ├── ASRService.java     # 语音识别 (Vosk)
 │   │   │       ├── TTSService.java     # 语音合成 (MaryTTS)
 │   │   │       ├── VADService.java     # 语音活动检测 (Silero VAD)
-│   │   │       └── WebRTCService.java  # WebRTC 实时通信
+│   │   │       ├── WebRTCService.java  # WebRTC 实时通信
+│   │   │       └── duplex/             # ✨ 全双工语音交互
+│   │   │           ├── DuplexConfig.java              # 全双工配置中心
+│   │   │           ├── DuplexSessionStateMachine.java  # 全双工状态机
+│   │   │           ├── DuplexOrchestrationService.java # 全双工编排服务
+│   │   │           ├── StreamingASRService.java        # 流式ASR
+│   │   │           ├── StreamingLLMService.java        # 流式LLM
+│   │   │           ├── StreamingTTSService.java        # 流式TTS
+│   │   │           ├── TripleVADEngine.java            # 三级VAD引擎
+│   │   │           ├── ServerAECProcessor.java         # 服务端AEC
+│   │   │           └── ModelRouter.java                # 智能模型路由
 │   │   ├── domain/                     # 领域层
 │   │   │   ├── model/                  # 领域模型 (Dialogue, Message)
 │   │   │   └── service/                # 领域服务接口
@@ -418,6 +475,9 @@ skylark/
 ├── share/                               # 技术文档
 │   ├── AGENTSCOPE_INTEGRATION_BLOG.md  # AgentScope 集成技术博客
 │   ├── ARCHITECTURE.md                 # 架构设计文档
+│   ├── FULL_DUPLEX_ARCHITECTURE.md     # 全双工架构设计文档
+│   ├── FULL_DUPLEX_TECH_SHARING.md     # 全双工技术博客
+│   ├── AGORA_RTC_TECH_SHARING.md       # 声网 Agora RTC 技术博客
 │   ├── KURENTO_INTEGRATION.md          # Kurento 集成指南
 │   ├── WEBRTC_FRAMEWORKS_BLOG.md       # WebRTC 双框架技术博客
 │   ├── WEBRTC_GUIDE.md                 # WebRTC 集成指南
@@ -428,12 +488,12 @@ skylark/
 ### 架构说明 (Architecture Description)
 
 - **API层** (`api`): REST API接口，提供对外服务（包含 Kurento 和 LiveKit WebRTC 端点）
-- **应用层** (`application`): 业务逻辑编排，服务组合（包含 **AgentService**、OrchestrationService、WebRTCService）
+- **应用层** (`application`): 业务逻辑编排，服务组合（包含 **AgentService**、OrchestrationService、WebRTCService、**Duplex 全双工组件**）
 - **领域层** (`domain`): 核心业务模型和规则
 - **基础设施层** (`infrastructure`): 外部依赖适配，技术实现（包含 Kurento/LiveKit 适配器、WebRTCSession、AudioProcessor、策略模式）
 - **公共层** (`common`): 通用工具和组件
 
-> 📌 **AgentService** 是应用层的核心：它封装 AgentScope 的 `ReActAgent`，为每个会话维护独立的 `InMemoryMemory`，并通过 `Toolkit` 支持动态工具扩展。`OrchestrationService` 将 VAD→ASR→AgentService→TTS 串联为完整语音流水线。
+> 📌 **AgentService** 是应用层的核心：它封装 AgentScope 的 `ReActAgent`，为每个会话维护独立的 `InMemoryMemory`，并通过 `Toolkit` 支持动态工具扩展。`OrchestrationService` 将 VAD→ASR→AgentService→TTS 串联为完整语音流水线。`DuplexOrchestrationService` 在此基础上引入全双工状态机、流式处理和 Barge-in 打断能力。
 
 ---
 
