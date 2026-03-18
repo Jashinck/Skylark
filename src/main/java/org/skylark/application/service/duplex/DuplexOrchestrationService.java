@@ -33,6 +33,7 @@ public class DuplexOrchestrationService {
     private final StreamingTTSService streamingTTS;
     private final ServerAECProcessor aecProcessor;
     private final ModelRouter modelRouter;
+    private final BackchannelFilter backchannelFilter;
 
     /** Per-session state machines (replaces sessionSpeaking + sessionBuffers) */
     private final Map<String, DuplexSessionStateMachine> sessions = new ConcurrentHashMap<>();
@@ -49,13 +50,15 @@ public class DuplexOrchestrationService {
             StreamingLLMService streamingLLM,
             StreamingTTSService streamingTTS,
             ServerAECProcessor aecProcessor,
-            ModelRouter modelRouter) {
+            ModelRouter modelRouter,
+            BackchannelFilter backchannelFilter) {
         this.vadEngine = vadEngine;
         this.streamingASR = streamingASR;
         this.streamingLLM = streamingLLM;
         this.streamingTTS = streamingTTS;
         this.aecProcessor = aecProcessor;
         this.modelRouter = modelRouter;
+        this.backchannelFilter = backchannelFilter;
         logger.info("DuplexOrchestrationService initialized");
     }
 
@@ -99,8 +102,9 @@ public class DuplexOrchestrationService {
                 handleBargeIn(sessionId, callback);
             }
 
-            // Feed audio to streaming ASR if listening
-            if (currentState == DuplexSessionState.LISTENING) {
+            // Feed audio to streaming ASR if listening OR speaking_and_listening
+            if (currentState == DuplexSessionState.LISTENING ||
+                    currentState == DuplexSessionState.SPEAKING_AND_LISTENING) {
                 if (!streamingASR.hasSession(sessionId)) {
                     startStreamingASR(sessionId, callback);
                 }
@@ -121,6 +125,12 @@ public class DuplexOrchestrationService {
         DuplexSessionStateMachine sm = sessions.get(sessionId);
         if (sm == null) return;
 
+        // In full-duplex mode, delegate to specialized handler
+        if (sm.getState() == DuplexSessionState.SPEAKING_AND_LISTENING) {
+            onSpeechEndDuringFullDuplex(sessionId);
+            return;
+        }
+
         sm.onVADEvent(VADEvent.SPEECH_END);
 
         if (sm.getState() == DuplexSessionState.PROCESSING) {
@@ -135,6 +145,42 @@ public class DuplexOrchestrationService {
             } else {
                 // No speech detected, return to IDLE
                 sm.onProcessingError();
+            }
+        }
+    }
+
+    /**
+     * Handle speech end during full-duplex SPEAKING_AND_LISTENING state
+     * 处理全双工并行态下的语音结束事件
+     */
+    public void onSpeechEndDuringFullDuplex(String sessionId) {
+        DuplexSessionStateMachine sm = sessions.get(sessionId);
+        if (sm == null) return;
+
+        if (sm.getState() == DuplexSessionState.SPEAKING_AND_LISTENING) {
+            // Finalize the parallel ASR session
+            String transcript = streamingASR.finalizeSession(sessionId);
+
+            if (transcript != null && !transcript.trim().isEmpty()) {
+                // Check if it's a backchannel filler (e.g. "嗯", "哦", "ok")
+                if (backchannelFilter.isBackchannel(transcript)) {
+                    logger.info("Backchannel filtered in full-duplex mode: '{}'", transcript);
+                    // Don't interrupt, just transition back to SPEAKING
+                    sm.onVADEvent(VADEvent.SPEECH_END);
+                    return;
+                }
+
+                // Real user input detected during full-duplex — this IS an interruption
+                logger.info("Real speech detected during full-duplex: '{}', triggering barge-in", transcript);
+                ResponseCallback callback = sessionCallbacks.get(sessionId);
+                if (callback != null) {
+                    handleBargeIn(sessionId, callback);
+                    callback.send(sessionId, "asr_result", Map.of("text", transcript));
+                    startStreamingLLM(sessionId, transcript, callback);
+                }
+            } else {
+                // No meaningful speech, go back to SPEAKING
+                sm.onVADEvent(VADEvent.SPEECH_END);
             }
         }
     }

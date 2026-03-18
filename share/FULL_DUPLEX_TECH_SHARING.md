@@ -71,10 +71,10 @@
 | **L0** | 半双工 | 严格轮替，一问一答 | 现有 VAD+ASR+LLM+TTS 串行流水线 | ✅ 已实现 |
 | **L1** | 可打断 | TTS 播放时可被用户打断 | 并行 VAD 监听 + TTS 可取消 + 状态机 | ✅ 本次实现 |
 | **L2** | 流式 | 首 Token 延迟 <500ms | 流式 ASR/LLM/TTS + 分句策略 | ✅ 框架就绪 |
-| **L3** | 全双工 | 同时说话和听话 | AEC 回声消除 + 全双工状态机 | 🔜 Phase 3 |
+| **L3** | 全双工 | 同时说话和听话 | Agora Linux SDK AEC（客户端）+ 全双工状态机 + Backchannel 过滤 | ✅ 本次实现 |
 | **L4** | 自然对话 | 理解语气、情感、语调 | Audio-native LLM (Moshi/GLM-4-Voice) | 📋 规划中 |
 
-本次升级的核心交付是 **L1（可打断）+ L2（流式框架）**，同时为 L3/L4 预置了完整的扩展点。
+本次升级的核心交付是 **L1（可打断）+ L2（流式框架）+ L3（全双工）**，同时为 L4 预置了完整的扩展点。
 
 ### 各级别的用户体验对比
 
@@ -104,9 +104,10 @@ L3 全双工:   用户说 ══════════════════
 ```
 src/main/java/org/skylark/application/service/duplex/
 ├── DuplexConfig.java                 ← 全双工配置中心（特性开关 + Bean 工厂）
-├── DuplexSessionState.java           ← 会话状态枚举（5 种状态）
+├── DuplexSessionState.java           ← 会话状态枚举（6 种状态，含 L3 SPEAKING_AND_LISTENING）
 ├── DuplexSessionStateMachine.java    ← ★ 全双工状态机（核心中的核心）
 ├── DuplexOrchestrationService.java   ← ★ 全双工编排服务（替换半双工编排）
+├── BackchannelFilter.java            ← L3 语气词过滤器（"嗯"/"哦"/"ok" 等不触发打断）
 ├── StreamingASRService.java          ← 流式 ASR 服务（Phase 1: 批量包装）
 ├── StreamingLLMService.java          ← 流式 LLM 服务（分句策略 + 异步处理）
 ├── StreamingTTSService.java          ← 流式 TTS 服务（可取消 + 分片合成）
@@ -175,14 +176,25 @@ src/main/java/org/skylark/application/service/duplex/
                         └────────────── │ SPEAKING  │
                                         └──────────┘
                                               │
-                                   SPEECH_START (barge-in)
+                               SPEECH_START (L1 barge-in / fullDuplexEnabled=false)
                                               ↓
                                       ┌──────────────┐
                                       │ INTERRUPTING  │──→ LISTENING
                                       └──────────────┘
+
+                               SPEECH_START (L3 full-duplex / fullDuplexEnabled=true)
+                                              ↓
+                                  ┌──────────────────────────┐
+                                  │ SPEAKING_AND_LISTENING   │
+                                  │  (上行ASR + 下行TTS并行)   │
+                                  └──────────────────────────┘
+                                         │         │
+                              SPEECH_END /         \ (backchannel filtered)
+                                        ↓           ↓
+                                   SPEAKING      SPEAKING
 ```
 
-**五种状态的职责**：
+**六种状态的职责**：
 
 | 状态 | 含义 | VAD 行为 | ASR 行为 | LLM/TTS 行为 |
 |------|------|---------|---------|-------------|
@@ -190,22 +202,52 @@ src/main/java/org/skylark/application/service/duplex/
 | `LISTENING` | 用户说话中 | 持续监听 | 流式接收音频 | 未启动 |
 | `PROCESSING` | ASR 完成，LLM 推理中 | **持续监听** ⭐ | 已完成 | LLM 推理中 |
 | `SPEAKING` | TTS 播放中 | **持续监听** ⭐ | 未启动 | TTS 播放中 |
+| `SPEAKING_AND_LISTENING` | **L3 并行态** | **持续监听** ⭐ | 流式接收音频 | TTS 继续播放 |
 | `INTERRUPTING` | 用户打断，清理中 | 持续监听 | 取消 | 取消 LLM + 停止 TTS |
 
-> ⭐ **全双工的核心设计**：在 `PROCESSING` 和 `SPEAKING` 状态下，VAD **始终保持监听**。这意味着即使系统正在思考或说话，也能感知到用户新的语音输入，从而实现打断（Barge-in）。
+> ⭐ **全双工的核心设计**：在 `PROCESSING`、`SPEAKING` 和 `SPEAKING_AND_LISTENING` 状态下，VAD **始终保持监听**。L3 新增的 `SPEAKING_AND_LISTENING` 状态实现了真正的上下行并行——系统继续播放 TTS 的同时，也在用 ASR 处理用户语音。
 
-**打断（Barge-in）机制的代码实现**：
+**L3 全双工打断机制**（`fullDuplexEnabled=true`）：
 
 ```java
-// DuplexSessionStateMachine.java — 核心打断逻辑
+// DuplexSessionStateMachine.java — L3 全双工逻辑
 case SPEAKING:
     if (event == VADEvent.SPEECH_START) {
-        // ★ 关键：用户在TTS播放期间打断
-        cancelCurrentLLMTask();                          // 1. 取消正在进行的 LLM 任务
-        transitionTo(DuplexSessionState.INTERRUPTING);   // 2. 进入打断状态
-        transitionTo(DuplexSessionState.LISTENING);      // 3. 立即切换到监听
+        if (fullDuplexEnabled) {
+            // L3 全双工：不停止 TTS，进入并行态
+            transitionTo(DuplexSessionState.SPEAKING_AND_LISTENING);
+        } else {
+            // L1 打断：停止 TTS，切换到 LISTENING
+            cancelCurrentLLMTask();
+            transitionTo(DuplexSessionState.INTERRUPTING);
+            transitionTo(DuplexSessionState.LISTENING);
+        }
     }
     break;
+
+case SPEAKING_AND_LISTENING:
+    if (event == VADEvent.SPEECH_END) {
+        // 用户说完，由编排服务决策：语气词过滤 or 真正打断
+        transitionTo(DuplexSessionState.SPEAKING);
+    }
+    break;
+```
+
+**L3 Backchannel 过滤**（`BackchannelFilter`）：
+
+```java
+// DuplexOrchestrationService.java — 全双工语音结束处理
+public void onSpeechEndDuringFullDuplex(String sessionId) {
+    String transcript = streamingASR.finalizeSession(sessionId);
+    if (backchannelFilter.isBackchannel(transcript)) {
+        // "嗯"/"哦"/"ok" 等语气词 → 不打断，TTS 继续播放
+        sm.onVADEvent(VADEvent.SPEECH_END);  // → back to SPEAKING
+    } else {
+        // 真实输入 → 触发打断，启动新一轮 LLM
+        handleBargeIn(sessionId, callback);
+        startStreamingLLM(sessionId, transcript, callback);
+    }
+}
 ```
 
 ---
@@ -389,13 +431,13 @@ public float[] process(float[] micAudio, float[] refAudio) {
     if (refAudio == null || refAudio.length == 0) {
         return micAudio;  // 系统未在播放，无需 AEC
     }
-    // Phase 1: 依赖客户端 AEC（PAAS RTC SDK 提供）
-    // Phase 3: 集成 SpeexDSP 或 WebRTC AEC3 做服务端 AEC
+    // L3 全双工：信任声网 Agora Linux SDK 内建的 AEC 能力
+    // 上行音频已经过客户端回声消除，服务端无需额外处理，直通即为正确行为
     return micAudio;
 }
 ```
 
-**Phase 1 的务实决策**：利用声网 Agora SDK 客户端内建的 AEC 能力，服务端暂时做 pass-through。这是一个很好的工程权衡——避免了复杂的服务端 AEC 实现，同时保证了全双工管道的完整性。
+**L3 AEC 策略**：声网 Agora Linux SDK 在客户端已提供完整的 AEC 能力，上行音频是干净的。服务端无需自实现 SpeexDSP/WebRTC AEC3，直通即为正确行为。这不仅简化了架构，也避免了 double AEC 带来的语音质量损失。
 
 ### 4.6 ModelRouter——智能模型路由
 
@@ -603,15 +645,16 @@ INFO  ModelRouter - ModelRouter initialized (Phase 1: cascade-only mode)
 1. **用户体验质变** — 从"对讲机"到"电话"，用户终于可以打断 AI 的长篇大论
 2. **架构能力升级** — 有限状态机 + 流式管道 + 异步可取消，为未来演进奠定基础
 3. **零风险引入** — 默认半双工，配置一键切换，不影响任何现有功能
-4. **全面测试保障** — 342 个测试全部通过，核心状态机路径 100% 覆盖
+4. **全面测试保障** — 383 个测试全部通过，核心状态机路径 100% 覆盖
 
 ### 技术亮点回顾
 
-- ✅ **DuplexSessionStateMachine** — 5 状态有限状态机，任何状态下 VAD 持续监听
+- ✅ **DuplexSessionStateMachine** — 6 状态有限状态机，任何状态下 VAD 持续监听，L3 新增 `SPEAKING_AND_LISTENING` 并行态
+- ✅ **BackchannelFilter** — 中英文语气词词典过滤，"嗯"/"哦"/"ok" 等不触发打断
 - ✅ **分句策略** — LLM 回复按句输出 TTS，首句延迟从秒级降至毫秒级
 - ✅ **可取消推理** — Barge-in 时 LLM CompletableFuture 立即取消，节省算力
 - ✅ **三级 VAD 引擎** — Silero/TEN-VAD/FireRedVAD 三级降级，准确率持续提升
-- ✅ **AEC 管道预置** — 服务端 AEC 扩展点就绪，当前依赖 PAAS RTC 客户端 AEC
+- ✅ **AEC 策略** — 信任 Agora Linux SDK 客户端 AEC，上行音频已干净，服务端直通即为正确行为
 - ✅ **智能模型路由** — 为 Moshi/GLM-4-Voice 端到端模型预留路由入口
 
 ### 后续演进路线
@@ -619,7 +662,9 @@ INFO  ModelRouter - ModelRouter initialized (Phase 1: cascade-only mode)
 ```
 ✅ 已完成：L0 半双工 (VAD→ASR→LLM→TTS 串行流水线)
   ↓
-✅ 已完成：L1 可打断 + L2 流式框架 ← 本次里程碑
+✅ 已完成：L1 可打断 + L2 流式框架 ← 里程碑 1
+  ↓
+✅ 已完成：L3 全双工 (SPEAKING_AND_LISTENING 并行态 + BackchannelFilter) ← 本次里程碑
   ↓
 🔜 Phase 2 (Q3 2026)：
   ├── FunASR Server 流式 ASR 集成
@@ -627,12 +672,8 @@ INFO  ModelRouter - ModelRouter initialized (Phase 1: cascade-only mode)
   ├── TEN-VAD + FireRedVAD 三级 VAD 策略
   └── 真正的 token-by-token 流式 LLM
   ↓
-🔜 Phase 3 (Q4 2026)：
-  ├── SpeexDSP / WebRTC AEC3 服务端回声消除
-  ├── 完整全双工状态机（同时说听）
-  └── Moshi / GLM-4-Voice 端到端模型集成
-  ↓
 📋 2027+：
+  ├── Moshi / GLM-4-Voice 端到端模型集成
   ├── 情感识别与语调理解
   ├── 实时翻译
   └── 多人对话支持

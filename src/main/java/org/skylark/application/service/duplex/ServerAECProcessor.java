@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
  * </pre></p>
  *
  * <p>Phase 1: Pass-through (no actual echo cancellation, relies on client-side AEC).
- * Phase 3: Integrate SpeexDSP or WebRTC AEC3 for server-side processing.</p>
+ * L3: Trust Agora Linux SDK AEC (client-side echo cancellation is sufficient).</p>
  *
  * @author Skylark Team
  * @version 1.0.0
@@ -55,10 +55,12 @@ public class ServerAECProcessor {
         }
 
         // Phase 1: Pass-through (client-side AEC via PAAS RTC SDK)
-        // Phase 3: Apply SpeexDSP echo cancellation
-        // return speexAEC.cancelEcho(micAudio, refAudio);
-
-        logger.debug("AEC pass-through: {} mic samples, {} ref samples", micAudio.length, refAudio.length);
+        // L3 Full-Duplex: Trust Agora Linux SDK's built-in AEC
+        // Agora RTC uplink audio is already echo-cancelled by the client SDK,
+        // so server-side AEC is not needed. Pass-through is the correct behavior.
+        // L3 全双工：信任声网 Agora Linux SDK 内建的 AEC 能力
+        // 上行音频已经过客户端回声消除，服务端无需额外处理，直通即为正确行为
+        logger.debug("AEC: trusting Agora client-side AEC, pass-through {} mic samples", micAudio.length);
         return micAudio;
     }
 

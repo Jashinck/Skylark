@@ -24,6 +24,7 @@ public class DuplexSessionStateMachine {
     private static final Logger logger = LoggerFactory.getLogger(DuplexSessionStateMachine.class);
 
     private final String sessionId;
+    private final boolean fullDuplexEnabled;
     private final AtomicReference<DuplexSessionState> currentState = new AtomicReference<>(DuplexSessionState.IDLE);
     private volatile CompletableFuture<?> currentLLMTask;
     private volatile long lastStateChangeTimestamp;
@@ -39,8 +40,24 @@ public class DuplexSessionStateMachine {
 
     private volatile StateTransitionListener stateTransitionListener;
 
+    /**
+     * Default constructor — backward-compatible, fullDuplexEnabled=false (L1 barge-in behavior)
+     * 默认构造函数 —— 向后兼容，fullDuplexEnabled=false（L1打断行为）
+     */
     public DuplexSessionStateMachine(String sessionId) {
+        this(sessionId, false);
+    }
+
+    /**
+     * Constructor with full-duplex mode flag
+     * 带全双工模式标志的构造函数
+     *
+     * @param sessionId        session identifier
+     * @param fullDuplexEnabled true to enable L3 full-duplex (SPEAKING_AND_LISTENING parallel state)
+     */
+    public DuplexSessionStateMachine(String sessionId, boolean fullDuplexEnabled) {
         this.sessionId = sessionId;
+        this.fullDuplexEnabled = fullDuplexEnabled;
         this.lastStateChangeTimestamp = System.currentTimeMillis();
     }
 
@@ -81,11 +98,30 @@ public class DuplexSessionStateMachine {
 
             case SPEAKING:
                 if (event == VADEvent.SPEECH_START) {
-                    // ★ Key: user barge-in during TTS playback
-                    // ★ 关键：用户在TTS播放期间打断
-                    cancelCurrentLLMTask();
-                    transitionTo(DuplexSessionState.INTERRUPTING);
-                    transitionTo(DuplexSessionState.LISTENING);
+                    if (fullDuplexEnabled) {
+                        // L3 full-duplex: don't stop TTS, enter parallel state
+                        // L3全双工：不停止TTS，进入并行态
+                        transitionTo(DuplexSessionState.SPEAKING_AND_LISTENING);
+                    } else {
+                        // L1 barge-in: stop TTS, switch to LISTENING
+                        // L1打断：停止TTS，切换到LISTENING
+                        cancelCurrentLLMTask();
+                        transitionTo(DuplexSessionState.INTERRUPTING);
+                        transitionTo(DuplexSessionState.LISTENING);
+                    }
+                }
+                break;
+
+            case SPEAKING_AND_LISTENING:
+                if (event == VADEvent.SPEECH_END) {
+                    // User finished speaking; ASR finalization and new round processing
+                    // triggered by the orchestration service
+                    // 用户说完了；ASR完成和新一轮处理由编排服务触发
+                    transitionTo(DuplexSessionState.SPEAKING);
+                } else if (event == VADEvent.SILENCE_TIMEOUT) {
+                    // Silence timeout, return to SPEAKING
+                    // 静默超时，回到SPEAKING
+                    transitionTo(DuplexSessionState.SPEAKING);
                 }
                 break;
 
@@ -112,12 +148,17 @@ public class DuplexSessionStateMachine {
     }
 
     /**
-     * Notify that TTS playback is complete — transition to IDLE
-     * 通知TTS播放完成 —— 转换到IDLE状态
+     * Notify that TTS playback is complete — transition to IDLE or LISTENING
+     * 通知TTS播放完成 —— 转换到IDLE或LISTENING状态
      */
     public synchronized void onTTSComplete() {
-        if (currentState.get() == DuplexSessionState.SPEAKING) {
+        DuplexSessionState state = currentState.get();
+        if (state == DuplexSessionState.SPEAKING) {
             transitionTo(DuplexSessionState.IDLE);
+        } else if (state == DuplexSessionState.SPEAKING_AND_LISTENING) {
+            // TTS complete while user is still speaking — switch to pure LISTENING
+            // TTS播完时用户还在说话 —— 切换到纯LISTENING状态
+            transitionTo(DuplexSessionState.LISTENING);
         }
     }
 
@@ -127,7 +168,9 @@ public class DuplexSessionStateMachine {
      */
     public synchronized void onProcessingError() {
         DuplexSessionState state = currentState.get();
-        if (state == DuplexSessionState.PROCESSING || state == DuplexSessionState.SPEAKING) {
+        if (state == DuplexSessionState.PROCESSING
+                || state == DuplexSessionState.SPEAKING
+                || state == DuplexSessionState.SPEAKING_AND_LISTENING) {
             transitionTo(DuplexSessionState.IDLE);
         }
     }
@@ -172,7 +215,9 @@ public class DuplexSessionStateMachine {
      */
     public boolean isBargeInPossible() {
         DuplexSessionState state = currentState.get();
-        return state == DuplexSessionState.SPEAKING || state == DuplexSessionState.PROCESSING;
+        return state == DuplexSessionState.SPEAKING
+                || state == DuplexSessionState.PROCESSING
+                || state == DuplexSessionState.SPEAKING_AND_LISTENING;
     }
 
     private void transitionTo(DuplexSessionState newState) {
