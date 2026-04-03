@@ -10,7 +10,6 @@ import org.skylark.infrastructure.adapter.webrtc.strategy.AgoraChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.AliRTCChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.KurentoChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.LiveKitChannelStrategy;
-import org.skylark.infrastructure.adapter.webrtc.strategy.TRTCChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.WebRTCChannelStrategy;
 import org.skylark.infrastructure.adapter.webrtc.strategy.WebSocketChannelStrategy;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,11 +21,10 @@ import org.springframework.context.annotation.Configuration;
  * WebRTC 策略配置
  *
  * <p>Configures the active WebRTC channel strategy based on the
- * {@code webrtc.strategy} property. Supports: websocket, kurento, livekit, agora, trtc, alirtc.</p>
+ * {@code webrtc.strategy} property. Supports: websocket, kurento, livekit, agora, alirtc.</p>
  *
  * <p>New strategies added in Phase 2 full-duplex upgrade roadmap:
  * <ul>
- *   <li><b>trtc</b>  — Tencent Cloud TRTC ([E1]): WeChat/WeCom ecosystem, Tencent AI integration</li>
  *   <li><b>alirtc</b> — Alibaba Cloud RTC ([E2]): Tongyi Qwen AI integration, Alibaba CDN</li>
  * </ul></p>
  *
@@ -79,16 +77,6 @@ public class WebRTCStrategyConfig {
                 strategy = new AgoraChannelStrategy(agoraClientAdapter, orchestrationService);
                 logger.info("✅ Agora WebRTC strategy activated");
                 break;
-            case "trtc":
-                // Phase 2 [E1]: Tencent Cloud TRTC
-                WebRTCProperties.Trtc trtcProps = webRTCProperties.getTrtc();
-                strategy = new TRTCChannelStrategy(
-                        trtcProps.getSdkAppId(),
-                        trtcProps.getSecretKey(),
-                        trtcProps.getTokenExpireSeconds()
-                );
-                logger.info("✅ Tencent Cloud TRTC WebRTC strategy activated (Phase 2 [E1])");
-                break;
             case "alirtc":
                 // Phase 2/3 [E2]: Alibaba Cloud RTC
                 WebRTCProperties.AliRtc aliRtcProps = webRTCProperties.getAlirtc();
@@ -109,3 +97,4 @@ public class WebRTCStrategyConfig {
         return strategy;
     }
 }
+

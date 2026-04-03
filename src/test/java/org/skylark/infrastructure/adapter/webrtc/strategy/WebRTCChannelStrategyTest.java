@@ -14,7 +14,6 @@ import org.skylark.infrastructure.adapter.webrtc.AgoraClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.LiveKitClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.strategy.AliRTCChannelStrategy;
-import org.skylark.infrastructure.adapter.webrtc.strategy.TRTCChannelStrategy;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -434,14 +433,12 @@ class WebRTCChannelStrategyTest {
         KurentoChannelStrategy kurentoStrategy = new KurentoChannelStrategy(kurentoClient);
         LiveKitChannelStrategy liveKitStrategy = new LiveKitChannelStrategy(liveKitClient);
         AgoraChannelStrategy agoraStrategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
-        TRTCChannelStrategy trtcStrategy = new TRTCChannelStrategy("app-123", "secret-xyz");
         AliRTCChannelStrategy aliRtcStrategy = new AliRTCChannelStrategy("app-456", "key-abc");
 
         assertFalse(wsStrategy.sessionExists("non-existent"));
         assertFalse(kurentoStrategy.sessionExists("non-existent"));
         assertFalse(liveKitStrategy.sessionExists("non-existent"));
         assertFalse(agoraStrategy.sessionExists("non-existent"));
-        assertFalse(trtcStrategy.sessionExists("non-existent"));
         assertFalse(aliRtcStrategy.sessionExists("non-existent"));
     }
 
@@ -451,153 +448,13 @@ class WebRTCChannelStrategyTest {
         KurentoChannelStrategy kurentoStrategy = new KurentoChannelStrategy(kurentoClient);
         LiveKitChannelStrategy liveKitStrategy = new LiveKitChannelStrategy(liveKitClient);
         AgoraChannelStrategy agoraStrategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
-        TRTCChannelStrategy trtcStrategy = new TRTCChannelStrategy("app-123", "secret-xyz");
         AliRTCChannelStrategy aliRtcStrategy = new AliRTCChannelStrategy("app-456", "key-abc");
 
         assertEquals(0, wsStrategy.getActiveSessionCount());
         assertEquals(0, kurentoStrategy.getActiveSessionCount());
         assertEquals(0, liveKitStrategy.getActiveSessionCount());
         assertEquals(0, agoraStrategy.getActiveSessionCount());
-        assertEquals(0, trtcStrategy.getActiveSessionCount());
         assertEquals(0, aliRtcStrategy.getActiveSessionCount());
-    }
-
-    // ========== TRTC Strategy Tests ==========
-
-    @Test
-    void testTRTCStrategy_GetStrategyName() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-id", "secret");
-        assertEquals("trtc", strategy.getStrategyName());
-    }
-
-    @Test
-    void testTRTCStrategy_IsAvailable_WithAppId() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("non-empty-app-id", "secret");
-        assertTrue(strategy.isAvailable());
-    }
-
-    @Test
-    void testTRTCStrategy_IsAvailable_EmptyAppId() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("", "secret");
-        assertFalse(strategy.isAvailable());
-    }
-
-    @Test
-    void testTRTCStrategy_CreateSession_ReturnsSessionId() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret-xyz");
-
-        String sessionId = strategy.createSession("user-trtc");
-
-        assertNotNull(sessionId);
-        assertTrue(strategy.sessionExists(sessionId));
-        assertEquals(1, strategy.getActiveSessionCount());
-    }
-
-    @Test
-    void testTRTCStrategy_CreateSession_NullUserId_Throws() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
-
-        assertThrows(IllegalArgumentException.class, () -> strategy.createSession(null));
-    }
-
-    @Test
-    void testTRTCStrategy_CreateSession_EmptyUserId_Throws() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
-
-        assertThrows(IllegalArgumentException.class, () -> strategy.createSession("  "));
-    }
-
-    @Test
-    void testTRTCStrategy_ProcessOffer_ReturnsValidConnectionInfo() throws Exception {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("test-app-id", "test-secret");
-        String sessionId = strategy.createSession("user-trtc");
-
-        String result = strategy.processOffer(sessionId, "ignored-sdp");
-
-        assertNotNull(result);
-        assertTrue(result.contains("test-app-id"));
-        assertTrue(result.contains("user-trtc"));
-        assertTrue(result.contains("trtc"));
-
-        // Verify valid JSON
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode node = mapper.readTree(result);
-        assertEquals("test-app-id", node.get("sdkAppId").asText());
-        assertEquals("user-trtc", node.get("userId").asText());
-        assertEquals("trtc", node.get("strategy").asText());
-        assertNotNull(node.get("userSig").asText());
-        assertTrue(node.get("roomId").asText().startsWith("skylark-"));
-    }
-
-    @Test
-    void testTRTCStrategy_ProcessOffer_SessionNotFound_Throws() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
-
-        assertThrows(IllegalArgumentException.class,
-                () -> strategy.processOffer("non-existent-session", "offer"));
-    }
-
-    @Test
-    void testTRTCStrategy_CloseSession_RemovesSession() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
-        String sessionId = strategy.createSession("user-trtc");
-        assertTrue(strategy.sessionExists(sessionId));
-
-        strategy.closeSession(sessionId);
-
-        assertFalse(strategy.sessionExists(sessionId));
-        assertEquals(0, strategy.getActiveSessionCount());
-    }
-
-    @Test
-    void testTRTCStrategy_CloseNonExistentSession_NoError() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
-
-        assertDoesNotThrow(() -> strategy.closeSession("non-existent"));
-    }
-
-    @Test
-    void testTRTCStrategy_AddIceCandidate_NoOp() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
-
-        assertDoesNotThrow(() -> strategy.addIceCandidate("any-session", "candidate", "audio", 0));
-    }
-
-    @Test
-    void testTRTCStrategy_GetSessionUserSig_ReturnsToken() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
-        String sessionId = strategy.createSession("user-trtc");
-
-        String userSig = strategy.getSessionUserSig(sessionId);
-
-        assertNotNull(userSig);
-        assertFalse(userSig.isEmpty());
-    }
-
-    @Test
-    void testTRTCStrategy_GetSessionUserSig_NonExistent_ReturnsNull() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
-
-        assertNull(strategy.getSessionUserSig("non-existent"));
-    }
-
-    @Test
-    void testTRTCStrategy_GenerateUserSig_ContainsUserId() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
-
-        String userSig = strategy.generateUserSig("my-user");
-
-        assertNotNull(userSig);
-        assertTrue(userSig.contains("my-user"));
-    }
-
-    @Test
-    void testTRTCStrategy_CustomTokenExpiry_UsesCustomValue() {
-        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret", 7200);
-
-        // Creating a session should succeed with custom expiry
-        String sessionId = strategy.createSession("user-1");
-        assertNotNull(sessionId);
     }
 
     // ========== AliRTC Strategy Tests ==========

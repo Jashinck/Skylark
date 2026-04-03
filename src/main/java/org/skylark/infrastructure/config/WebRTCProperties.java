@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
  * <p>Type-safe configuration properties for WebRTC, including strategy selection,
  * Kurento, LiveKit, and STUN/TURN server settings.</p>
  *
- * <p>Supports six pluggable strategies: websocket, kurento, livekit, agora, trtc, alirtc.
+ * <p>Supports five pluggable strategies: websocket, kurento, livekit, agora, alirtc.
  * Use the {@code webrtc.strategy} property to select the active strategy.</p>
  *
  * @author Skylark Team
@@ -21,15 +21,14 @@ import org.springframework.context.annotation.Configuration;
 public class WebRTCProperties {
 
     /**
-     * Active WebRTC channel strategy: websocket, kurento, livekit, agora, trtc, or alirtc
-     * 活动的 WebRTC 通道策略：websocket、kurento、livekit、agora、trtc 或 alirtc
+     * Active WebRTC channel strategy: websocket, kurento, livekit, agora, or alirtc
+     * 活动的 WebRTC 通道策略：websocket、kurento、livekit、agora 或 alirtc
      */
     private String strategy = "websocket";
 
     private final Kurento kurento = new Kurento();
     private final LiveKit livekit = new LiveKit();
     private final Agora agora = new Agora();
-    private final Trtc trtc = new Trtc();
     private final AliRtc alirtc = new AliRtc();
     private final Stun stun = new Stun();
     private final Turn turn = new Turn();
@@ -52,10 +51,6 @@ public class WebRTCProperties {
 
     public Agora getAgora() {
         return agora;
-    }
-
-    public Trtc getTrtc() {
-        return trtc;
     }
 
     public AliRtc getAlirtc() {
@@ -237,25 +232,6 @@ public class WebRTCProperties {
 
         public int getChannels() { return channels; }
         public void setChannels(int channels) { this.channels = channels; }
-
-        public int getTokenExpireSeconds() { return tokenExpireSeconds; }
-        public void setTokenExpireSeconds(int tokenExpireSeconds) { this.tokenExpireSeconds = tokenExpireSeconds; }
-    }
-
-    /**
-     * Tencent Cloud TRTC (腾讯云实时音视频) configuration
-     * Phase 2 [E1] in the full-duplex upgrade roadmap
-     */
-    public static class Trtc {
-        private String sdkAppId = "";
-        private String secretKey = "";
-        private int tokenExpireSeconds = 86400;
-
-        public String getSdkAppId() { return sdkAppId; }
-        public void setSdkAppId(String sdkAppId) { this.sdkAppId = sdkAppId; }
-
-        public String getSecretKey() { return secretKey; }
-        public void setSecretKey(String secretKey) { this.secretKey = secretKey; }
 
         public int getTokenExpireSeconds() { return tokenExpireSeconds; }
         public void setTokenExpireSeconds(int tokenExpireSeconds) { this.tokenExpireSeconds = tokenExpireSeconds; }
