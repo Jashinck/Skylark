@@ -111,6 +111,18 @@
             <version>4.4.31.4</version>
         </dependency>
 
+        <!-- Alibaba Cloud ARTC Linux SDK (阿里云 ARTC 服务端 SDK) -->
+        <!-- 不支持 Maven 中央仓库，需手动下载后放置到 libs/ 目录 -->
+        <!-- 下载地址：https://help.aliyun.com/zh/live/artc-download-the-sdk -->
+        <!-- 未放置真实 SDK 时此存根 JAR 允许项目编译；运行时以反射降级处理 -->
+        <dependency>
+            <groupId>com.aliyun.artc</groupId>
+            <artifactId>alirtc-linux-sdk</artifactId>
+            <version>2.0.0</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/libs/alirtc-linux-sdk-2.0.0.jar</systemPath>
+        </dependency>
+
         <!-- AgentScope - AI Agent Framework -->
         <dependency>
             <groupId>io.agentscope</groupId>

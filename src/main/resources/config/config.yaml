@@ -5,6 +5,12 @@ wake_word: ""
 interrupt: true
 
 asr:
+  # Available adapters:
+  #   DirectASRAdapter          — local VAD-gated Vosk (default)
+  #   HttpASRAdapter            — HTTP multipart upload to remote ASR service
+  #   org.skylark.infrastructure.adapter.asr.QwenASRAdapter   — Tongyi Paraformer (Phase 2 [B1])
+  #     Required: apiKey (DashScope API key)
+  #     Optional: model (default: paraformer-realtime-v2), timeout
   class_name: DirectASRAdapter
   output_file: tmp/asr
 
@@ -15,6 +21,12 @@ vad:
   min_silence_duration_ms: 500
 
 tts:
+  # Available adapters:
+  #   DirectTTSAdapter          — local MaryTTS / Edge TTS (default)
+  #   HttpTTSAdapter            — HTTP JSON POST to remote TTS service
+  #   org.skylark.infrastructure.adapter.tts.QwenTTSAdapter   — CosyVoice / Tongyi TTS (Phase 2 [B2])
+  #     Required: apiKey (DashScope API key)
+  #     Optional: model (default: cosyvoice-v1), voice (default: longxiaochun), format, sampleRate
   class_name: DirectTTSAdapter
   output_file: tmp/tts
   voice: zh-CN-XiaoxiaoNeural
@@ -54,3 +66,50 @@ memory:
   role: 智能语音助手
   personality: 友好、专业、乐于助人
   capabilities: 我可以进行语音对话，回答问题，帮助您完成各种任务。
+
+# Full-duplex configuration (全双工配置)
+# Phase 2 upgrade roadmap from DUPLEX_COMPARISON_ANALYSIS.md
+duplex:
+  # Modes: half | barge-in | streaming | full
+  #   half      — existing half-duplex behavior (default, production-safe)
+  #   barge-in  — Phase 1: TTS can be interrupted at any time
+  #   streaming — Phase 2: barge-in + full streaming pipeline (low latency)
+  #   full      — Phase 3: full-duplex with AEC + end-to-end model routing
+  mode: half
+
+# WebRTC strategy configuration (WebRTC 策略配置)
+webrtc:
+  # Available strategies:
+  #   websocket — WebSocket-based (default, no external service required)
+  #   kurento   — Kurento Media Server (SDP-based)
+  #   livekit   — LiveKit Server (token-based)
+  #   agora     — Agora RTC SDK (token-based, Phase 1 milestone)
+  #   alirtc    — Alibaba Cloud RTC (token-based, Phase 2/3 [E2])
+  strategy: websocket
+
+  # Agora (声网) settings — activate with: strategy: agora
+  agora:
+    appId: ${AGORA_APP_ID:}
+    appCertificate: ${AGORA_APP_CERTIFICATE:}
+    region: cn
+    sampleRate: 16000
+    channels: 1
+    tokenExpireSeconds: 3600
+
+  # Alibaba Cloud RTC (阿里云音视频通信) — activate with: strategy: alirtc
+  # Phase 2/3 [E2]: Tongyi Qwen AI integration + Alibaba CDN acceleration
+  alirtc:
+    appId: ${ALIRTC_APP_ID:}
+    appKey: ${ALIRTC_APP_KEY:}
+    tokenTtlSeconds: 3600
+
+  # Kurento settings — activate with: strategy: kurento
+  kurento:
+    wsUri: ws://localhost:8888/kurento
+
+  # LiveKit settings — activate with: strategy: livekit
+  livekit:
+    url: ${LIVEKIT_URL:}
+    apiKey: ${LIVEKIT_API_KEY:}
+    apiSecret: ${LIVEKIT_API_SECRET:}
+

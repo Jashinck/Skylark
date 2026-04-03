@@ -466,4 +466,80 @@ public class RobotController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    // ========== AliRTC WebRTC Endpoints ==========
+
+    /**
+     * Create a new AliRTC WebRTC session
+     * 创建新的阿里云 ARTC WebRTC 会话
+     *
+     * <p>Creates an AliRTC channel, generates HMAC-SHA256 authInfo, and returns
+     * connection info for the client to connect via AliRTC Web SDK.</p>
+     *
+     * @param request Create session request with user ID
+     * @return AliRTC connection response with appId, channelId, and authInfo
+     */
+    @PostMapping("/alirtc/session")
+    public ResponseEntity<AliRTCConnectionResponse> createAliRTCSession(
+            @RequestBody CreateSessionRequest request) {
+        try {
+            logger.info("Creating AliRTC WebRTC session for user: {}", request.getUserId());
+
+            String sessionId = webRTCService.createSession(request.getUserId());
+            String connectionInfo = webRTCService.processOffer(sessionId, "");
+
+            // Parse connection info JSON
+            String appId = null;
+            String channelId = null;
+            String userId = null;
+            String authInfo = null;
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode node = mapper.readTree(connectionInfo);
+                appId = node.has("appId") ? node.get("appId").asText() : null;
+                channelId = node.has("channelId") ? node.get("channelId").asText() : null;
+                userId = node.has("userId") ? node.get("userId").asText() : null;
+                authInfo = node.has("authInfo") ? node.get("authInfo").asText() : null;
+            } catch (Exception parseError) {
+                logger.warn("Could not parse AliRTC connection info as JSON, using raw value");
+            }
+
+            AliRTCConnectionResponse response = new AliRTCConnectionResponse(
+                sessionId, appId, channelId, userId, authInfo,
+                "created", "AliRTC WebRTC session created successfully"
+            );
+
+            logger.info("AliRTC WebRTC session created: {}", sessionId);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Failed to create AliRTC WebRTC session", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new AliRTCConnectionResponse(null, null, null, null, null,
+                    "error", "Failed to create AliRTC session"));
+        }
+    }
+
+    /**
+     * Close an AliRTC WebRTC session
+     * 关闭阿里云 ARTC WebRTC 会话
+     *
+     * @param sessionId Session ID to close
+     * @return Response entity
+     */
+    @DeleteMapping("/alirtc/session/{sessionId}")
+    public ResponseEntity<Void> closeAliRTCSession(@PathVariable String sessionId) {
+        try {
+            logger.info("Closing AliRTC WebRTC session: {}", sessionId);
+
+            webRTCService.closeSession(sessionId);
+
+            logger.info("AliRTC WebRTC session closed: {}", sessionId);
+            return ResponseEntity.ok().build();
+
+        } catch (Exception e) {
+            logger.error("Failed to close AliRTC WebRTC session: {}", sessionId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }
