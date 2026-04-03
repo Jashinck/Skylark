@@ -4,7 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.skylark.application.service.OrchestrationService;
+import org.skylark.infrastructure.adapter.webrtc.AliRTCClientAdapter;
 
+import java.util.Base64;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -12,10 +16,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * Alibaba Cloud RTC Channel Strategy
  * 阿里云音视频通信（AliRTC）通道策略
  *
- * <p>Uses Alibaba Cloud RTC for real-time audio communication.
+ * <p>Uses Alibaba Cloud ARTC for real-time audio communication.
  * AliRTC is deeply integrated with Alibaba's AI ecosystem
- * (Tongyi Qwen ASR/TTS/LLM) and delivers superior network
- * performance via Alibaba CDN edge nodes.</p>
+ * (Tongyi Qwen ASR/TTS/LLM) and delivers superior network performance
+ * via Alibaba CDN edge nodes.</p>
  *
  * <p>Key advantages:
  * <ul>
@@ -25,21 +29,25 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>Preferred choice for enterprise customers on Alibaba Cloud</li>
  * </ul></p>
  *
- * <p>Phase 2/3 component ([E2] in the full-duplex upgrade roadmap).
- * Recommended to deploy alongside Tongyi Qwen ASR/TTS adapters for
- * a unified Alibaba Cloud AI pipeline with minimal latency.</p>
+ * <p>Integrates with {@link OrchestrationService} for the
+ * VAD → ASR → LLM → TTS audio processing pipeline.
+ * When audio frames are received from the remote user, they are forwarded
+ * through the orchestration pipeline. TTS output is sent back via
+ * {@link AliRTCClientAdapter#pushAudioFrame}.</p>
  *
- * <p>Example config.yaml usage:
+ * <p>Example application.yaml usage:
  * <pre>
  * webrtc:
  *   strategy: alirtc
- *   appId: ${ALIRTC_APP_ID}
- *   appKey: ${ALIRTC_APP_KEY}
+ *   alirtc:
+ *     app-id: ${ALIRTC_APP_ID}
+ *     app-key: ${ALIRTC_APP_KEY}
+ *     app-secret: ${ALIRTC_APP_SECRET}
  * </pre></p>
  *
  * @author Skylark Team
- * @version 1.0.0
- * @see <a href="https://help.aliyun.com/zh/live-and-rtc/">AliRTC Documentation</a>
+ * @version 2.0.0
+ * @see <a href="https://help.aliyun.com/zh/live/artc-download-the-sdk">AliRTC Documentation</a>
  */
 public class AliRTCChannelStrategy implements WebRTCChannelStrategy {
 
@@ -47,39 +55,27 @@ public class AliRTCChannelStrategy implements WebRTCChannelStrategy {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    /** Default token TTL in seconds (1 hour) */
-    private static final int DEFAULT_TOKEN_TTL_SECONDS = 3600;
+    private static final int DEFAULT_SAMPLE_RATE = 16000;
+    private static final int DEFAULT_CHANNELS = 1;
+    private static final String SERVER_BOT_ID = "skylark-server-bot";
+    private static final String TTS_AUDIO_TYPE = "tts_audio";
 
-    /** AliRTC channel name prefix */
-    private static final String CHANNEL_PREFIX = "skylark-";
-
-    private final String appId;
-    private final String appKey;
-    private final int tokenTtlSeconds;
+    private final AliRTCClientAdapter aliRTCClient;
+    private final OrchestrationService orchestrationService;
     private final ConcurrentHashMap<String, AliRTCSessionInfo> sessions = new ConcurrentHashMap<>();
 
     /**
-     * Creates an AliRTCChannelStrategy with the given app credentials.
+     * Creates an AliRTCChannelStrategy wired to the given client adapter and
+     * orchestration service.
      *
-     * @param appId  AliRTC application ID
-     * @param appKey AliRTC application key for token generation
+     * @param aliRTCClient         AliRTC client adapter
+     * @param orchestrationService VAD/ASR/LLM/TTS orchestration service
      */
-    public AliRTCChannelStrategy(String appId, String appKey) {
-        this(appId, appKey, DEFAULT_TOKEN_TTL_SECONDS);
-    }
-
-    /**
-     * Creates an AliRTCChannelStrategy with custom token TTL.
-     *
-     * @param appId           AliRTC application ID
-     * @param appKey          AliRTC application key
-     * @param tokenTtlSeconds Token validity period in seconds
-     */
-    public AliRTCChannelStrategy(String appId, String appKey, int tokenTtlSeconds) {
-        this.appId = appId;
-        this.appKey = appKey;
-        this.tokenTtlSeconds = tokenTtlSeconds;
-        logger.info("[AliRTC] AliRTCChannelStrategy initialized: appId={}", appId);
+    public AliRTCChannelStrategy(AliRTCClientAdapter aliRTCClient,
+                                  OrchestrationService orchestrationService) {
+        this.aliRTCClient = aliRTCClient;
+        this.orchestrationService = orchestrationService;
+        logger.info("[AliRTC] AliRTCChannelStrategy initialized");
     }
 
     @Override
@@ -88,10 +84,8 @@ public class AliRTCChannelStrategy implements WebRTCChannelStrategy {
     }
 
     /**
-     * Creates a new AliRTC session: allocates a channel and generates an auth token.
-     *
-     * <p>AliRTC uses a token-based connection model — clients connect directly
-     * to AliRTC servers using the channel name and auth token.</p>
+     * Creates a new AliRTC session: allocates a channel, generates authInfo,
+     * has the server join the channel, and wires the audio pipeline.
      *
      * @param userId User identifier
      * @return Session ID
@@ -103,25 +97,54 @@ public class AliRTCChannelStrategy implements WebRTCChannelStrategy {
             throw new IllegalArgumentException("userId must not be null or empty");
         }
 
-        String sessionId = UUID.randomUUID().toString();
-        String channelId = CHANNEL_PREFIX + sessionId.substring(0, 8);
+        try {
+            String sessionId = UUID.randomUUID().toString();
+            String channelId = "skylark-" + sessionId;
+            logger.info("[AliRTC] Creating session for user: {}, channelId: {}", userId, channelId);
 
-        // Generate AliRTC auth token (Phase 2: use official AliRTC SDK token generation)
-        String token = generateToken(channelId, userId);
+            // 1. Generate server-side authInfo and join channel
+            String serverAuthInfo = aliRTCClient.generateAuthInfo(channelId, SERVER_BOT_ID);
+            aliRTCClient.joinChannel(channelId, SERVER_BOT_ID, serverAuthInfo);
 
-        AliRTCSessionInfo sessionInfo = new AliRTCSessionInfo(sessionId, userId, channelId, token, appId);
-        sessions.put(sessionId, sessionInfo);
+            // 2. Register audio data callback: remote PCM → OrchestrationService pipeline
+            //    TTS output from pipeline → pushAudioFrame back to the remote user
+            OrchestrationService.ResponseCallback responseCallback = (sid, type, data) -> {
+                if (TTS_AUDIO_TYPE.equals(type) && data instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    String audioBase64 = (String) ((Map<String, Object>) data).get("audio");
+                    if (audioBase64 != null) {
+                        byte[] ttsAudio = Base64.getDecoder().decode(audioBase64);
+                        aliRTCClient.pushAudioFrame(channelId, ttsAudio,
+                            DEFAULT_SAMPLE_RATE, DEFAULT_CHANNELS);
+                    }
+                }
+            };
+            aliRTCClient.registerAudioDataCallback(channelId,
+                (ch, uid, pcmData, sr, ch2) ->
+                    orchestrationService.processAudioStream(sessionId, pcmData, responseCallback));
 
-        logger.info("[AliRTC] Session created: sessionId={}, userId={}, channelId={}",
-                sessionId, userId, channelId);
-        return sessionId;
+            // 3. Generate client authInfo
+            String clientAuthInfo = aliRTCClient.generateAuthInfo(channelId, userId);
+
+            AliRTCSessionInfo sessionInfo = new AliRTCSessionInfo(
+                sessionId, userId, channelId, clientAuthInfo,
+                aliRTCClient.getAppId());
+            sessions.put(sessionId, sessionInfo);
+
+            logger.info("[AliRTC] Session created successfully: {}", sessionId);
+            return sessionId;
+
+        } catch (Exception e) {
+            logger.error("[AliRTC] Failed to create session for user: {}", userId, e);
+            throw new RuntimeException("Failed to create AliRTC WebRTC session", e);
+        }
     }
 
     /**
-     * Returns AliRTC connection info (appId + channelId + userId + token).
+     * Returns AliRTC connection info (appId + channelId + userId + authInfo).
      *
      * <p>AliRTC handles SDP and ICE negotiation internally. The returned JSON
-     * contains all credentials needed for the client to join the RTC channel.</p>
+     * contains all credentials needed for the Web SDK client to join the channel.</p>
      *
      * @param sessionId Session identifier
      * @param sdpOffer  Ignored — AliRTC manages SDP internally
@@ -139,21 +162,18 @@ public class AliRTCChannelStrategy implements WebRTCChannelStrategy {
             node.put("appId", session.getAppId());
             node.put("channelId", session.getChannelId());
             node.put("userId", session.getUserId());
-            node.put("token", session.getToken());
+            node.put("authInfo", session.getAuthInfo());
             node.put("strategy", getStrategyName());
 
-            String result = objectMapper.writeValueAsString(node);
             logger.debug("[AliRTC] Returning connection info for session: {}", sessionId);
-            return result;
+            return objectMapper.writeValueAsString(node);
         } catch (Exception e) {
             logger.error("[AliRTC] Failed to serialize connection info for session: {}", sessionId, e);
             throw new RuntimeException("Failed to serialize AliRTC connection info", e);
         }
     }
 
-    /**
-     * No-op — AliRTC handles ICE negotiation internally.
-     */
+    /** No-op — AliRTC handles ICE negotiation internally. */
     @Override
     public void addIceCandidate(String sessionId, String candidate, String sdpMid, int sdpMLineIndex) {
         logger.debug("[AliRTC] ICE negotiation handled internally by AliRTC for session: {}", sessionId);
@@ -161,11 +181,16 @@ public class AliRTCChannelStrategy implements WebRTCChannelStrategy {
 
     @Override
     public void closeSession(String sessionId) {
-        AliRTCSessionInfo session = sessions.remove(sessionId);
-        if (session != null) {
-            logger.info("[AliRTC] Session closed: sessionId={}, channelId={}",
+        try {
+            AliRTCSessionInfo session = sessions.remove(sessionId);
+            if (session != null) {
+                aliRTCClient.leaveChannel(session.getChannelId());
+                orchestrationService.cleanupSession(sessionId);
+                logger.info("[AliRTC] Session closed: sessionId={}, channelId={}",
                     sessionId, session.getChannelId());
-            // Phase 2: call AliRTC REST API to remove the channel
+            }
+        } catch (Exception e) {
+            logger.error("[AliRTC] Error closing session: {}", sessionId, e);
         }
     }
 
@@ -181,61 +206,33 @@ public class AliRTCChannelStrategy implements WebRTCChannelStrategy {
 
     @Override
     public boolean isAvailable() {
-        // Phase 2: probe AliRTC service endpoint
-        return appId != null && !appId.isEmpty();
-    }
-
-    /**
-     * Gets the auth token for an active session.
-     *
-     * @param sessionId Session identifier
-     * @return Auth token or null if session not found
-     */
-    public String getSessionToken(String sessionId) {
-        AliRTCSessionInfo session = sessions.get(sessionId);
-        return session != null ? session.getToken() : null;
-    }
-
-    /**
-     * Generates an AliRTC auth token for the given channel and user.
-     *
-     * <p>Phase 2: Replace with the official Alibaba Cloud RTC SDK token generation
-     * (HMAC-SHA256 based). Current placeholder returns a mock token.</p>
-     *
-     * @param channelId Channel identifier
-     * @param userId    User identifier
-     * @return AliRTC auth token
-     */
-    String generateToken(String channelId, String userId) {
-        // Phase 2: Use AliRTC SDK: RtcTokenBuilder.buildToken(appId, appKey, channelId, userId, ttl)
-        // Reference: https://help.aliyun.com/zh/live-and-rtc/rtc/developer-reference/token-based-authentication
-        logger.debug("[AliRTC] Token generation for channelId={}, userId={} (Phase 2: placeholder)",
-                channelId, userId);
-        return "alirtc-token-" + channelId + "-" + userId + "-" + System.currentTimeMillis();
+        return aliRTCClient.isAvailable();
     }
 
     /**
      * Internal session info for AliRTC strategy.
+     * 阿里云 ARTC 策略的内部会话信息
      */
     static class AliRTCSessionInfo {
         private final String sessionId;
         private final String userId;
         private final String channelId;
-        private final String token;
+        private final String authInfo;
         private final String appId;
 
-        AliRTCSessionInfo(String sessionId, String userId, String channelId, String token, String appId) {
+        AliRTCSessionInfo(String sessionId, String userId,
+                           String channelId, String authInfo, String appId) {
             this.sessionId = sessionId;
             this.userId = userId;
             this.channelId = channelId;
-            this.token = token;
+            this.authInfo = authInfo;
             this.appId = appId;
         }
 
         public String getSessionId() { return sessionId; }
         public String getUserId() { return userId; }
         public String getChannelId() { return channelId; }
-        public String getToken() { return token; }
+        public String getAuthInfo() { return authInfo; }
         public String getAppId() { return appId; }
     }
 }

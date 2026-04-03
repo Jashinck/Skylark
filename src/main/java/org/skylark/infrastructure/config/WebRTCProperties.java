@@ -239,11 +239,16 @@ public class WebRTCProperties {
 
     /**
      * Alibaba Cloud RTC (阿里云音视频通信) configuration
-     * Phase 2/3 [E2] in the full-duplex upgrade roadmap
+     * [E2] in the full-duplex upgrade roadmap
      */
     public static class AliRtc {
         private String appId = "";
         private String appKey = "";
+        /** HMAC-SHA256 signing secret — required for real authInfo generation */
+        private String appSecret = "";
+        private String region = "cn";
+        private int sampleRate = 16000;
+        private int channels = 1;
         private int tokenTtlSeconds = 3600;
 
         public String getAppId() { return appId; }
@@ -251,6 +256,18 @@ public class WebRTCProperties {
 
         public String getAppKey() { return appKey; }
         public void setAppKey(String appKey) { this.appKey = appKey; }
+
+        public String getAppSecret() { return appSecret; }
+        public void setAppSecret(String appSecret) { this.appSecret = appSecret; }
+
+        public String getRegion() { return region; }
+        public void setRegion(String region) { this.region = region; }
+
+        public int getSampleRate() { return sampleRate; }
+        public void setSampleRate(int sampleRate) { this.sampleRate = sampleRate; }
+
+        public int getChannels() { return channels; }
+        public void setChannels(int channels) { this.channels = channels; }
 
         public int getTokenTtlSeconds() { return tokenTtlSeconds; }
         public void setTokenTtlSeconds(int tokenTtlSeconds) { this.tokenTtlSeconds = tokenTtlSeconds; }

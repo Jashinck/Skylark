@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.skylark.application.service.OrchestrationService;
 import org.skylark.infrastructure.adapter.webrtc.AgoraClientAdapter;
+import org.skylark.infrastructure.adapter.webrtc.AliRTCClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.LiveKitClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.strategy.AgoraChannelStrategy;
@@ -49,6 +50,9 @@ public class WebRTCStrategyConfig {
     private AgoraClientAdapter agoraClientAdapter;
 
     @Autowired
+    private AliRTCClientAdapter aliRTCClientAdapter;
+
+    @Autowired
     private OrchestrationService orchestrationService;
 
     /**
@@ -78,14 +82,8 @@ public class WebRTCStrategyConfig {
                 logger.info("✅ Agora WebRTC strategy activated");
                 break;
             case "alirtc":
-                // Phase 2/3 [E2]: Alibaba Cloud RTC
-                WebRTCProperties.AliRtc aliRtcProps = webRTCProperties.getAlirtc();
-                strategy = new AliRTCChannelStrategy(
-                        aliRtcProps.getAppId(),
-                        aliRtcProps.getAppKey(),
-                        aliRtcProps.getTokenTtlSeconds()
-                );
-                logger.info("✅ Alibaba Cloud RTC WebRTC strategy activated (Phase 2/3 [E2])");
+                strategy = new AliRTCChannelStrategy(aliRTCClientAdapter, orchestrationService);
+                logger.info("✅ Alibaba Cloud RTC WebRTC strategy activated");
                 break;
             case "websocket":
             default:
