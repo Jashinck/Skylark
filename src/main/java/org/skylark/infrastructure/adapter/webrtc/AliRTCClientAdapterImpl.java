@@ -231,7 +231,7 @@ public class AliRTCClientAdapterImpl implements AliRTCClientAdapter {
         }
 
         // Placeholder (appKey/appSecret not configured)
-        logger.debug("[AliRTC] authKey not configured — returning placeholder authInfo for channel: {}",
+        logger.debug("[AliRTC] appKey/appSecret not configured — returning placeholder authInfo for channel: {}",
             channelId);
         return String.format(
             "{\"appId\":\"%s\",\"channelId\":\"%s\",\"userId\":\"%s\","
