@@ -13,6 +13,8 @@ import org.skylark.application.service.OrchestrationService;
 import org.skylark.infrastructure.adapter.webrtc.AgoraClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.KurentoClientAdapter;
 import org.skylark.infrastructure.adapter.webrtc.LiveKitClientAdapter;
+import org.skylark.infrastructure.adapter.webrtc.strategy.AliRTCChannelStrategy;
+import org.skylark.infrastructure.adapter.webrtc.strategy.TRTCChannelStrategy;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -432,23 +434,307 @@ class WebRTCChannelStrategyTest {
         KurentoChannelStrategy kurentoStrategy = new KurentoChannelStrategy(kurentoClient);
         LiveKitChannelStrategy liveKitStrategy = new LiveKitChannelStrategy(liveKitClient);
         AgoraChannelStrategy agoraStrategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
-        
+        TRTCChannelStrategy trtcStrategy = new TRTCChannelStrategy("app-123", "secret-xyz");
+        AliRTCChannelStrategy aliRtcStrategy = new AliRTCChannelStrategy("app-456", "key-abc");
+
         assertFalse(wsStrategy.sessionExists("non-existent"));
         assertFalse(kurentoStrategy.sessionExists("non-existent"));
         assertFalse(liveKitStrategy.sessionExists("non-existent"));
         assertFalse(agoraStrategy.sessionExists("non-existent"));
+        assertFalse(trtcStrategy.sessionExists("non-existent"));
+        assertFalse(aliRtcStrategy.sessionExists("non-existent"));
     }
-    
+
     @Test
     void testAllStrategies_InitialSessionCount_Zero() {
         WebSocketChannelStrategy wsStrategy = new WebSocketChannelStrategy();
         KurentoChannelStrategy kurentoStrategy = new KurentoChannelStrategy(kurentoClient);
         LiveKitChannelStrategy liveKitStrategy = new LiveKitChannelStrategy(liveKitClient);
         AgoraChannelStrategy agoraStrategy = new AgoraChannelStrategy(agoraClient, orchestrationService);
-        
+        TRTCChannelStrategy trtcStrategy = new TRTCChannelStrategy("app-123", "secret-xyz");
+        AliRTCChannelStrategy aliRtcStrategy = new AliRTCChannelStrategy("app-456", "key-abc");
+
         assertEquals(0, wsStrategy.getActiveSessionCount());
         assertEquals(0, kurentoStrategy.getActiveSessionCount());
         assertEquals(0, liveKitStrategy.getActiveSessionCount());
         assertEquals(0, agoraStrategy.getActiveSessionCount());
+        assertEquals(0, trtcStrategy.getActiveSessionCount());
+        assertEquals(0, aliRtcStrategy.getActiveSessionCount());
+    }
+
+    // ========== TRTC Strategy Tests ==========
+
+    @Test
+    void testTRTCStrategy_GetStrategyName() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-id", "secret");
+        assertEquals("trtc", strategy.getStrategyName());
+    }
+
+    @Test
+    void testTRTCStrategy_IsAvailable_WithAppId() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("non-empty-app-id", "secret");
+        assertTrue(strategy.isAvailable());
+    }
+
+    @Test
+    void testTRTCStrategy_IsAvailable_EmptyAppId() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("", "secret");
+        assertFalse(strategy.isAvailable());
+    }
+
+    @Test
+    void testTRTCStrategy_CreateSession_ReturnsSessionId() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret-xyz");
+
+        String sessionId = strategy.createSession("user-trtc");
+
+        assertNotNull(sessionId);
+        assertTrue(strategy.sessionExists(sessionId));
+        assertEquals(1, strategy.getActiveSessionCount());
+    }
+
+    @Test
+    void testTRTCStrategy_CreateSession_NullUserId_Throws() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
+
+        assertThrows(IllegalArgumentException.class, () -> strategy.createSession(null));
+    }
+
+    @Test
+    void testTRTCStrategy_CreateSession_EmptyUserId_Throws() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
+
+        assertThrows(IllegalArgumentException.class, () -> strategy.createSession("  "));
+    }
+
+    @Test
+    void testTRTCStrategy_ProcessOffer_ReturnsValidConnectionInfo() throws Exception {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("test-app-id", "test-secret");
+        String sessionId = strategy.createSession("user-trtc");
+
+        String result = strategy.processOffer(sessionId, "ignored-sdp");
+
+        assertNotNull(result);
+        assertTrue(result.contains("test-app-id"));
+        assertTrue(result.contains("user-trtc"));
+        assertTrue(result.contains("trtc"));
+
+        // Verify valid JSON
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode node = mapper.readTree(result);
+        assertEquals("test-app-id", node.get("sdkAppId").asText());
+        assertEquals("user-trtc", node.get("userId").asText());
+        assertEquals("trtc", node.get("strategy").asText());
+        assertNotNull(node.get("userSig").asText());
+        assertTrue(node.get("roomId").asText().startsWith("skylark-"));
+    }
+
+    @Test
+    void testTRTCStrategy_ProcessOffer_SessionNotFound_Throws() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> strategy.processOffer("non-existent-session", "offer"));
+    }
+
+    @Test
+    void testTRTCStrategy_CloseSession_RemovesSession() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
+        String sessionId = strategy.createSession("user-trtc");
+        assertTrue(strategy.sessionExists(sessionId));
+
+        strategy.closeSession(sessionId);
+
+        assertFalse(strategy.sessionExists(sessionId));
+        assertEquals(0, strategy.getActiveSessionCount());
+    }
+
+    @Test
+    void testTRTCStrategy_CloseNonExistentSession_NoError() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
+
+        assertDoesNotThrow(() -> strategy.closeSession("non-existent"));
+    }
+
+    @Test
+    void testTRTCStrategy_AddIceCandidate_NoOp() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
+
+        assertDoesNotThrow(() -> strategy.addIceCandidate("any-session", "candidate", "audio", 0));
+    }
+
+    @Test
+    void testTRTCStrategy_GetSessionUserSig_ReturnsToken() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
+        String sessionId = strategy.createSession("user-trtc");
+
+        String userSig = strategy.getSessionUserSig(sessionId);
+
+        assertNotNull(userSig);
+        assertFalse(userSig.isEmpty());
+    }
+
+    @Test
+    void testTRTCStrategy_GetSessionUserSig_NonExistent_ReturnsNull() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
+
+        assertNull(strategy.getSessionUserSig("non-existent"));
+    }
+
+    @Test
+    void testTRTCStrategy_GenerateUserSig_ContainsUserId() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret");
+
+        String userSig = strategy.generateUserSig("my-user");
+
+        assertNotNull(userSig);
+        assertTrue(userSig.contains("my-user"));
+    }
+
+    @Test
+    void testTRTCStrategy_CustomTokenExpiry_UsesCustomValue() {
+        TRTCChannelStrategy strategy = new TRTCChannelStrategy("app-123", "secret", 7200);
+
+        // Creating a session should succeed with custom expiry
+        String sessionId = strategy.createSession("user-1");
+        assertNotNull(sessionId);
+    }
+
+    // ========== AliRTC Strategy Tests ==========
+
+    @Test
+    void testAliRTCStrategy_GetStrategyName() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-id", "key");
+        assertEquals("alirtc", strategy.getStrategyName());
+    }
+
+    @Test
+    void testAliRTCStrategy_IsAvailable_WithAppId() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("non-empty-app-id", "key");
+        assertTrue(strategy.isAvailable());
+    }
+
+    @Test
+    void testAliRTCStrategy_IsAvailable_EmptyAppId() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("", "key");
+        assertFalse(strategy.isAvailable());
+    }
+
+    @Test
+    void testAliRTCStrategy_CreateSession_ReturnsSessionId() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-456", "key-abc");
+
+        String sessionId = strategy.createSession("user-ali");
+
+        assertNotNull(sessionId);
+        assertTrue(strategy.sessionExists(sessionId));
+        assertEquals(1, strategy.getActiveSessionCount());
+    }
+
+    @Test
+    void testAliRTCStrategy_CreateSession_NullUserId_Throws() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-456", "key");
+
+        assertThrows(IllegalArgumentException.class, () -> strategy.createSession(null));
+    }
+
+    @Test
+    void testAliRTCStrategy_CreateSession_EmptyUserId_Throws() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-456", "key");
+
+        assertThrows(IllegalArgumentException.class, () -> strategy.createSession("  "));
+    }
+
+    @Test
+    void testAliRTCStrategy_ProcessOffer_ReturnsValidConnectionInfo() throws Exception {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("test-app-456", "test-key");
+        String sessionId = strategy.createSession("user-ali");
+
+        String result = strategy.processOffer(sessionId, "ignored-sdp");
+
+        assertNotNull(result);
+        assertTrue(result.contains("test-app-456"));
+        assertTrue(result.contains("user-ali"));
+        assertTrue(result.contains("alirtc"));
+
+        // Verify valid JSON
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode node = mapper.readTree(result);
+        assertEquals("test-app-456", node.get("appId").asText());
+        assertEquals("user-ali", node.get("userId").asText());
+        assertEquals("alirtc", node.get("strategy").asText());
+        assertNotNull(node.get("token").asText());
+        assertTrue(node.get("channelId").asText().startsWith("skylark-"));
+    }
+
+    @Test
+    void testAliRTCStrategy_ProcessOffer_SessionNotFound_Throws() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-456", "key");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> strategy.processOffer("non-existent-session", "offer"));
+    }
+
+    @Test
+    void testAliRTCStrategy_CloseSession_RemovesSession() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-456", "key");
+        String sessionId = strategy.createSession("user-ali");
+        assertTrue(strategy.sessionExists(sessionId));
+
+        strategy.closeSession(sessionId);
+
+        assertFalse(strategy.sessionExists(sessionId));
+        assertEquals(0, strategy.getActiveSessionCount());
+    }
+
+    @Test
+    void testAliRTCStrategy_CloseNonExistentSession_NoError() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-456", "key");
+
+        assertDoesNotThrow(() -> strategy.closeSession("non-existent"));
+    }
+
+    @Test
+    void testAliRTCStrategy_AddIceCandidate_NoOp() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-456", "key");
+
+        assertDoesNotThrow(() -> strategy.addIceCandidate("any-session", "candidate", "audio", 0));
+    }
+
+    @Test
+    void testAliRTCStrategy_GetSessionToken_ReturnsToken() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-456", "key");
+        String sessionId = strategy.createSession("user-ali");
+
+        String token = strategy.getSessionToken(sessionId);
+
+        assertNotNull(token);
+        assertFalse(token.isEmpty());
+    }
+
+    @Test
+    void testAliRTCStrategy_GetSessionToken_NonExistent_ReturnsNull() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-456", "key");
+
+        assertNull(strategy.getSessionToken("non-existent"));
+    }
+
+    @Test
+    void testAliRTCStrategy_GenerateToken_ContainsChannelAndUser() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-456", "key");
+
+        String token = strategy.generateToken("my-channel", "my-user");
+
+        assertNotNull(token);
+        assertTrue(token.contains("my-channel"));
+        assertTrue(token.contains("my-user"));
+    }
+
+    @Test
+    void testAliRTCStrategy_CustomTokenTtl_UsesCustomValue() {
+        AliRTCChannelStrategy strategy = new AliRTCChannelStrategy("app-456", "key", 7200);
+
+        String sessionId = strategy.createSession("user-1");
+        assertNotNull(sessionId);
     }
 }

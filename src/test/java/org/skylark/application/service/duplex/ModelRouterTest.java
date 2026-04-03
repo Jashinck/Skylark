@@ -2,6 +2,7 @@ package org.skylark.application.service.duplex;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.skylark.infrastructure.adapter.multimodal.QwenAudioAdapter;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -17,7 +18,7 @@ class ModelRouterTest {
         modelRouter = new ModelRouter();
     }
 
-    // --- route() tests ---
+    // --- route() tests (cascade-only default mode) ---
 
     @Test
     void testRoute_ChineseToolCallingKeyword_ReturnsCascade() {
@@ -93,7 +94,7 @@ class ModelRouterTest {
 
     @Test
     void testRoute_SimpleChat_ReturnsCascade() {
-        // Phase 1: even simple chat returns CASCADE
+        // Phase 1: even simple chat returns CASCADE (end-to-end not enabled)
         assertEquals(ModelRouter.ModelType.CASCADE, modelRouter.route("s1", "hello"));
     }
 
@@ -127,6 +128,94 @@ class ModelRouterTest {
     @Test
     void testRequiresToolCalling_EmptyInput_ReturnsFalse() {
         assertFalse(modelRouter.requiresToolCalling(""));
+    }
+
+    // --- isSimpleChat() tests ---
+
+    @Test
+    void testIsSimpleChat_ChineseGreeting_ReturnsTrue() {
+        assertTrue(modelRouter.isSimpleChat("你好"));
+    }
+
+    @Test
+    void testIsSimpleChat_EnglishGreeting_ReturnsTrue() {
+        assertTrue(modelRouter.isSimpleChat("hello"));
+    }
+
+    @Test
+    void testIsSimpleChat_ShortUtterance_ReturnsTrue() {
+        assertTrue(modelRouter.isSimpleChat("ok")); // ≤ 10 chars
+        assertTrue(modelRouter.isSimpleChat("嗯嗯好的")); // ≤ 10 chars
+    }
+
+    @Test
+    void testIsSimpleChat_LongComplexText_ReturnsFalse() {
+        assertFalse(modelRouter.isSimpleChat("请帮我分析这份技术方案的优缺点并给出专业建议"));
+    }
+
+    @Test
+    void testIsSimpleChat_NullContext_ReturnsTrue() {
+        assertTrue(modelRouter.isSimpleChat(null));
+    }
+
+    @Test
+    void testIsSimpleChat_EmptyContext_ReturnsTrue() {
+        assertTrue(modelRouter.isSimpleChat(""));
+    }
+
+    // --- isEndToEndEnabled() tests ---
+
+    @Test
+    void testIsEndToEndEnabled_DefaultConstructor_ReturnsFalse() {
+        assertFalse(modelRouter.isEndToEndEnabled());
+    }
+
+    @Test
+    void testIsEndToEndEnabled_WithFlag_ReturnsTrue() {
+        ModelRouter router = new ModelRouter(true, null);
+        assertTrue(router.isEndToEndEnabled());
+    }
+
+    @Test
+    void testIsEndToEndEnabled_WithFlagFalse_ReturnsFalse() {
+        ModelRouter router = new ModelRouter(false, null);
+        assertFalse(router.isEndToEndEnabled());
+    }
+
+    // --- isEndToEndAvailable() tests ---
+
+    @Test
+    void testIsEndToEndAvailable_NullAdapter_ReturnsFalse() {
+        ModelRouter router = new ModelRouter(true, null);
+        assertFalse(router.isEndToEndAvailable());
+    }
+
+    @Test
+    void testIsEndToEndAvailable_PlaceholderAdapter_ReturnsFalse() {
+        // QwenAudioAdapter is a Phase 3 placeholder — isAvailable() always false
+        QwenAudioAdapter adapter = new QwenAudioAdapter();
+        ModelRouter router = new ModelRouter(true, adapter);
+        assertFalse(router.isEndToEndAvailable());
+    }
+
+    // --- END_TO_END routing (requires available adapter) ---
+
+    @Test
+    void testRoute_EndToEndEnabled_SimpleChat_ButAdapterUnavailable_ReturnsCascade() {
+        // Even if end-to-end is enabled, if model is unavailable → CASCADE
+        QwenAudioAdapter unavailableAdapter = new QwenAudioAdapter();
+        ModelRouter router = new ModelRouter(true, unavailableAdapter);
+
+        assertEquals(ModelRouter.ModelType.CASCADE, router.route("s1", "hello"));
+    }
+
+    @Test
+    void testRoute_EndToEndEnabled_ToolCallingContext_AlwaysCascade() {
+        QwenAudioAdapter adapter = new QwenAudioAdapter();
+        ModelRouter router = new ModelRouter(true, adapter);
+
+        // Tool-calling always → CASCADE regardless of end-to-end config
+        assertEquals(ModelRouter.ModelType.CASCADE, router.route("s1", "查询天气"));
     }
 
     // --- ModelType enum tests ---
