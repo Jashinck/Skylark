@@ -63,7 +63,7 @@ public class QwenASRAdapter implements ASR {
     private static final String DEFAULT_SERVICE_URL =
             "https://dashscope.aliyuncs.com/api/v1/services/audio/asr/transcription";
     private static final String DEFAULT_MODEL = "paraformer-realtime-v2";
-    private static final String DEFAULT_OUTPUT_BASE = "temp/asr";
+    private static final String DEFAULT_OUTPUT_BASE = "tmp/asr";
     private static final int DEFAULT_TIMEOUT_SECONDS = 30;
 
     private final String apiKey;

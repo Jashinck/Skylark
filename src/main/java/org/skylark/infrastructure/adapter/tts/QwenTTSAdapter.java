@@ -75,7 +75,7 @@ public class QwenTTSAdapter implements TTS {
             "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2audiores/generation";
     private static final String DEFAULT_MODEL = "cosyvoice-v1";
     private static final String DEFAULT_VOICE = "longxiaochun";
-    private static final String DEFAULT_OUTPUT_BASE = "temp/tts";
+    private static final String DEFAULT_OUTPUT_BASE = "tmp/tts";
     private static final String DEFAULT_FORMAT = "wav";
     private static final int DEFAULT_SAMPLE_RATE = 22050;
     private static final int DEFAULT_TIMEOUT_SECONDS = 60;
