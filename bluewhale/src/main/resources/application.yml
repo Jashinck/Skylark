@@ -1,0 +1,16 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: bluewhale
+
+bluewhale:
+  embedding:
+    base-url: https://api.openai.com/v1
+    api-key: ${BLUEWHALE_EMBEDDING_API_KEY:}
+    model: text-embedding-3-small
+  evolution:
+    forgetting-threshold: 0.05
+    strengthening-access-threshold: 3
+    abstraction-min-memories: 3
