@@ -22,19 +22,19 @@ public class OpenAILLMAdapter implements LLMPort {
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
-
-    @Value("${langur.llm.api-key:}")
-    private String apiKey;
-
-    @Value("${langur.llm.model:gpt-4o}")
-    private String defaultModel;
+    private final String apiKey;
+    private final String defaultModel;
 
     public OpenAILLMAdapter(
             @Value("${langur.llm.base-url:https://api.openai.com/v1}") String baseUrl,
+            @Value("${langur.llm.api-key:}") String apiKey,
+            @Value("${langur.llm.model:gpt-4o}") String defaultModel,
             ObjectMapper objectMapper) {
         this.webClient = WebClient.builder()
                 .baseUrl(baseUrl)
                 .build();
+        this.apiKey = apiKey;
+        this.defaultModel = defaultModel;
         this.objectMapper = objectMapper;
     }
 

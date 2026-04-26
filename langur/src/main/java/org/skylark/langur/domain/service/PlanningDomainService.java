@@ -1,6 +1,7 @@
 package org.skylark.langur.domain.service;
 
 import org.skylark.langur.domain.model.plan.Plan;
+import org.skylark.langur.domain.model.plan.StepStatus;
 import org.springframework.stereotype.Service;
 
 /**
@@ -15,9 +16,8 @@ public class PlanningDomainService {
 
     public boolean isPlanComplete(Plan plan) {
         return plan.getSteps().stream()
-                .allMatch(step -> step.getStatus() != null &&
-                        (step.getStatus().name().equals("COMPLETED") ||
-                         step.getStatus().name().equals("FAILED") ||
-                         step.getStatus().name().equals("SKIPPED")));
+                .allMatch(step -> step.getStatus() == StepStatus.COMPLETED
+                        || step.getStatus() == StepStatus.FAILED
+                        || step.getStatus() == StepStatus.SKIPPED);
     }
 }
