@@ -67,7 +67,7 @@ public class Memory {
         this.metadata = metadata.withImportance(newImportance);
     }
 
-    public boolean shouldForgot(double threshold) {
+    public boolean shouldBeForgotten(double threshold) {
         return metadata.computeEffectiveImportance() < threshold;
     }
 

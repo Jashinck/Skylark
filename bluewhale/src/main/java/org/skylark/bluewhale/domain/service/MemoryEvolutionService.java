@@ -36,7 +36,7 @@ public class MemoryEvolutionService {
 
         memories.stream()
                 .filter(m -> m.getType() != MemoryType.PROCEDURAL) // 程序记忆不遗忘
-                .filter(m -> m.shouldForgot(FORGETTING_THRESHOLD))
+                .filter(m -> m.shouldBeForgotten(FORGETTING_THRESHOLD))
                 .forEach(m -> {
                     double scoreBefore = m.getMetadata().getImportanceScore();
                     memoryRepository.delete(m.getId());

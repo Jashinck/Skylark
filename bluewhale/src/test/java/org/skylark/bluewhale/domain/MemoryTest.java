@@ -88,6 +88,6 @@ class MemoryTest {
                 .lastAccessedAt(Instant.now().minusSeconds(86400 * 10))
                 .accessCount(0).importanceScore(0.01).decayFactor(1.0).build();
         Memory m = Memory.create(MemoryType.EPISODIC, MemoryContent.ofText("Old"), lowMetadata);
-        assertTrue(m.shouldForgot(0.05));
+        assertTrue(m.shouldBeForgotten(0.05));
     }
 }
