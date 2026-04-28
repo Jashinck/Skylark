@@ -1,0 +1,15 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: herms
+
+herms:
+  llm:
+    base-url: https://api.openai.com/v1
+    api-key: ${HERMS_LLM_API_KEY:}
+    model: gpt-4o
+  http:
+    connect-timeout-ms: 5000
+    read-timeout-ms: 30000
