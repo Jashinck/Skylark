@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.skylark.herms.application.command.CreateWorkflowCommand;
 import org.skylark.herms.application.command.TriggerWorkflowCommand;
 import org.skylark.herms.application.service.WorkflowApplicationService;
-import org.skylark.herms.domain.model.step.WorkflowStep;
 import org.skylark.herms.interfaces.dto.CreateWorkflowRequest;
 import org.skylark.herms.interfaces.dto.ExecutionResponse;
 import org.skylark.herms.interfaces.dto.TriggerWorkflowRequest;
